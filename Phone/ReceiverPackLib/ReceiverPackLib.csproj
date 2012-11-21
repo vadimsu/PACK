@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.20506</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{7B0585C7-EDC7-44C3-BD2B-9CA121CCB8E6}</ProjectGuid>
+    <ProjectTypeGuids>{C089C8C0-30E0-4E22-80C0-CE093F111A43};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ReceiverPackLib</RootNamespace>
+    <AssemblyName>ReceiverPackLib</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <SilverlightVersion>$(TargetFrameworkVersion)</SilverlightVersion>
+    <TargetFrameworkProfile>WindowsPhone71</TargetFrameworkProfile>
+    <TargetFrameworkIdentifier>Silverlight</TargetFrameworkIdentifier>
+    <SilverlightApplication>false</SilverlightApplication>
+    <ValidateXaml>true</ValidateXaml>
+    <ThrowErrorsInValidation>true</ThrowErrorsInValidation>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>Bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>Bin\Release</OutputPath>
+    <DefineConstants>TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Windows" />
+    <Reference Include="system" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Net" />
+    <Reference Include="mscorlib.extensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\ReceiverPackLib\ReceiverPackLib.cs">
+      <Link>ReceiverPackLib.cs</Link>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ByteArrayScalarTypeConversionLib\ByteArrayScalarTypeConversionLib.csproj">
+      <Project>{F6CC02D1-7FB4-459B-9EBD-B9703DEB6B56}</Project>
+      <Name>ByteArrayScalarTypeConversionLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ChunkAndChainFileManager\ChunkAndChainFileManager.csproj">
+      <Project>{4B03225E-1E45-4B62-9D47-9DC2D507095B}</Project>
+      <Name>ChunkAndChainFileManager</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ChunkChainDataTypes\ChunkChainDataTypes.csproj">
+      <Project>{6AC26EF2-7C94-4B66-97AB-5F2AE2353ADF}</Project>
+      <Name>ChunkChainDataTypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LogUtility\LogUtility.csproj">
+      <Project>{BBDC5EE5-3B55-4518-AE11-9FF1F8692FD9}</Project>
+      <Name>LogUtility</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\PackChunking\PackChunking.csproj">
+      <Project>{E567FA26-34DA-4E04-BEFA-042E774C4A96}</Project>
+      <Name>PackChunking</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\PackMsg\PackMsg.csproj">
+      <Project>{E8F41D21-85FC-4359-82ED-5C1A99D0EA7F}</Project>
+      <Name>PackMsg</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\PerformanceMonitoring\PerformanceMonitoring.csproj">
+      <Project>{2F2688B8-3CF6-49D0-BAF6-622DC64CC1C4}</Project>
+      <Name>PerformanceMonitoring</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Stream2Message\Stream2Message.csproj">
+      <Project>{C9F358FC-9158-42BC-850B-2DE3049D7DE9}</Project>
+      <Name>Stream2Message</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.$(TargetFrameworkProfile).Overrides.targets" />
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.CSharp.targets" />
+  <ProjectExtensions />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

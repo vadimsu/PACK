@@ -1,0 +1,397 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Net;
+using StreamChunckingLib;
+using ChunkChainDataTypes;
+using SenderPackLib;
+using PackMsg;
+using Stream2Message;
+using MyMemoryStream;
+using System.Threading;
+
+namespace SenderPackLib
+{
+    public class SenderPackLib : Stream2Message.Stream2Message
+    {
+        public static uint StreamsCreated = 0;
+        public static uint FullChunksGot = 0;
+        public static uint TailChunksGot = 0;
+        public static uint Failed2GetChunk = 0;
+        public static uint AnchorsListEmpty = 0;
+        public static uint AnchorsList2Short = 0;
+        public static uint AnchorsSizeMismatch = 0;
+        public static uint AnchorsHintMismatch = 0;
+        public static uint AnchorsSha1Mismatch = 0;
+        public static uint AnchorsRemoved = 0;
+        public static uint ChunkMetaDataEmpty = 0;
+
+        enum Sender_State_e
+        {
+            SENDER_HEADER_STATE,
+            SENDER_MSG_BODY_STATE
+        };
+        
+        private StreamChunckingLib.PackChunking packChunking;
+        private List<ChunkMetaDataAndOffset> predMsg;
+
+        // for statistics & logging only
+        uint TotalDataReceived;
+        uint TotalDataSent;
+        uint TotalSavedData;
+        uint PredMsgReceived;
+        uint PredAckMsgSent;
+        uint DataMsgSent;
+        EndPoint Id;
+
+        object libMutex;
+
+        void InitInstance(byte[]data)
+        {
+            packChunking = new PackChunking(8);
+            predMsg = null;
+            StreamsCreated++;
+            TotalDataReceived = 0;
+            TotalDataSent = 0;
+            TotalSavedData = 0;
+            PredMsgReceived = 0;
+            PredAckMsgSent = 0;
+            DataMsgSent = 0;
+            libMutex = new object();
+            LogUtility.LogUtility.LogFile("SenderLib:InitInstance", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+        }
+
+        public uint GetTotalAdded()
+        {
+            return TotalDataReceived;
+        }
+        public uint GetTotalSent()
+        {
+            return TotalDataSent;
+        }
+        public uint GetTotalSavedData()
+        {
+            return TotalSavedData;
+        }
+
+        public SenderPackLib(byte[] data) : base(null)
+        {
+            Id = new IPEndPoint(0,0);
+            InitInstance(data);
+        }
+
+        void ForwardData(byte[] data)
+        {
+            int offset;
+            byte []msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)data.Length, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
+            data.CopyTo(msg, offset);
+            onMessageReadyToTx(onTxMessageParam, msg);
+            TotalDataSent += (uint)msg.Length;
+            DataMsgSent++;
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " forwarded " + Convert.ToString(msg.Length) + " TotalSent " + Convert.ToString(TotalDataSent), ModuleLogLevel);
+        }
+
+        public void AddData(byte[] data)
+        {
+            List<long> chunkList;
+            int offset;
+            int processedBytes;
+            int senderChunkIdx;
+            int receiverChunkIdx;
+            byte[] msg;
+            Monitor.Enter(libMutex);
+            uint offset_in_stream = TotalDataSent + TotalSavedData;
+            
+            TotalDataReceived += (uint)data.Length;
+            
+            if (predMsg == null)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " no prediction msg stored  total received " + Convert.ToString(TotalDataReceived) + " total sent " + Convert.ToString(TotalDataSent), ModuleLogLevel);
+                ForwardData(data);
+                Monitor.Exit(libMutex);
+                return;
+            }
+            uint longestChain = (uint)predMsg.Count;
+            uint longestChainLen = 0;
+            uint longestProcessedBytes = 0;
+            uint chainIdx = 0;
+            List<long> longestChunkList = null;
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " AddData: process " + Convert.ToString(predMsg.Count) + " chains total received " + Convert.ToString(TotalDataReceived) + " total sent " + Convert.ToString(TotalDataSent) + " total saved " + Convert.ToString(TotalSavedData) + " data len " + Convert.ToString(data.Length), ModuleLogLevel);
+            for (chainIdx = 0;chainIdx < predMsg.Count;chainIdx++)
+            {
+                chunkList = new List<long>();
+                offset = (int)predMsg[(int)chainIdx].offset;
+                processedBytes = packChunking.getChunks(chunkList, data, (int)offset, data.Length, true, false);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " offset " + Convert.ToString(offset) + " processedBytes " + Convert.ToString(processedBytes) + " chunk count " + Convert.ToString(chunkList.Count), ModuleLogLevel);
+                senderChunkIdx = 0;
+                receiverChunkIdx = 0;
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " processing " + Convert.ToString(predMsg[(int)chainIdx].chunkMetaData.Count) + " chunks ", ModuleLogLevel);
+                {
+                    for (int i = 0; i < chunkList.Count; i++)
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " ###calc chunk " + Convert.ToString(chunkList[i]) + " len " + Convert.ToString(PackChunking.chunkToLen(chunkList[i])), ModuleLogLevel);
+                    }
+                    for (int i = 0; i < predMsg[(int)chainIdx].chunkMetaData.Count; i++)
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " ###recvd chunk " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)chainIdx].chunkMetaData[i].chunk)), ModuleLogLevel);
+                    }
+                }
+                while ((senderChunkIdx < chunkList.Count) && (receiverChunkIdx < predMsg[(int)chainIdx].chunkMetaData.Count))
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " chunk " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)chainIdx].chunkMetaData[receiverChunkIdx].chunk)), ModuleLogLevel);
+                    if (PackChunking.chunkCode(0, PackChunking.chunkToLen(chunkList[senderChunkIdx])) != PackChunking.chunkCode(0, PackChunking.chunkToLen(predMsg[(int)chainIdx].chunkMetaData[receiverChunkIdx].chunk)))
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " code mismatch calculated " + Convert.ToString(chunkList[senderChunkIdx]) + " " + Convert.ToString(PackChunking.chunkToLen(chunkList[senderChunkIdx])) + " received " + Convert.ToString(predMsg[(int)chainIdx].chunkMetaData[receiverChunkIdx].chunk) + " " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)chainIdx].chunkMetaData[receiverChunkIdx].chunk)), ModuleLogLevel);
+                        break;
+                    }
+                    if (PackChunking.GetChunkHint(data, (uint)offset, (uint)PackChunking.chunkToLen(chunkList[senderChunkIdx])) !=
+                        predMsg[(int)chainIdx].chunkMetaData[receiverChunkIdx].hint)
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " hint mismatch ", ModuleLogLevel);
+                        break;
+                    }
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " match ", ModuleLogLevel);
+                    offset += (int)PackChunking.chunkToLen(chunkList[senderChunkIdx]);
+                    senderChunkIdx++;
+                    receiverChunkIdx++;
+                }
+                if (senderChunkIdx > longestChain)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " chain longer " + Convert.ToString(senderChunkIdx) + " " + Convert.ToString(longestChainLen), ModuleLogLevel);
+                    longestChain = chainIdx;
+                    longestChainLen = (uint)senderChunkIdx;
+                    longestProcessedBytes = (uint)processedBytes;
+                    longestChunkList = chunkList;
+                }
+            }
+            if (longestChain == (uint)predMsg.Count)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " no match at all", ModuleLogLevel);
+                ForwardData(data);
+                Monitor.Exit(libMutex);
+                return;
+            }
+            offset = (int)predMsg[(int)longestChain].offset;
+            senderChunkIdx = 0;
+            receiverChunkIdx = 0;
+            while (senderChunkIdx < longestChainLen)
+            {
+                long chunkLen = PackChunking.chunkToLen(longestChunkList[senderChunkIdx]);
+                long sha1 = PackChunking.calcSha1(data,offset,(int)chunkLen);
+                if (sha1 != PackChunking.chunkToSha1(predMsg[(int)longestChain].chunkMetaData[receiverChunkIdx].chunk))
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sha mismatch " + Convert.ToString(senderChunkIdx), ModuleLogLevel);
+                    break;
+                }
+                offset += (int)chunkLen;
+                TotalSavedData += (uint)chunkLen;
+                senderChunkIdx++;
+            }
+            if (senderChunkIdx == 0)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " after sha1 no match at all ", ModuleLogLevel);
+                ForwardData(data);
+                Monitor.Exit(libMutex);
+                return;
+            }
+            if (predMsg[(int)longestChain].offset > 0)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " preparing DATA msg till offset " + Convert.ToString(predMsg[(int)longestChain].offset), ModuleLogLevel);
+                msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)predMsg[(int)longestChain].offset, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
+                for (int i = 0; i < (int)predMsg[(int)longestChain].offset; i++)
+                {
+                    msg[i + offset] = data[i];
+                }
+                onMessageReadyToTx(onTxMessageParam, msg);
+                TotalDataSent += (uint)predMsg[(int)longestChain].offset;
+                DataMsgSent++;
+            }
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " preparing and sending PRED ACK total saved data total saved now " + Convert.ToString(TotalSavedData) + " chunks " + Convert.ToString(senderChunkIdx), ModuleLogLevel);
+            byte []buff = PackMsg.PackMsg.AllocateMsgAndBuildHeader(GetPredictionAckMessageSize((uint)senderChunkIdx), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
+            EncodePredictionAckMessage(buff, offset, predMsg[(int)longestChain], (uint)senderChunkIdx, TotalDataSent + TotalSavedData);
+            onMessageReadyToTx(onTxMessageParam, buff);
+            PredAckMsgSent++;
+            if ((data.Length - longestProcessedBytes) > 0)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sending data after chain " + Convert.ToString(data.Length - longestProcessedBytes), ModuleLogLevel);
+                msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)(data.Length - longestProcessedBytes), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
+                for (int i = (int)longestProcessedBytes; i < data.Length; i++)
+                {
+                    msg[(i - longestProcessedBytes) + offset] = data[i];
+                }
+                onMessageReadyToTx(onTxMessageParam, msg);
+                TotalDataSent += (uint)data.Length - longestProcessedBytes;
+                DataMsgSent++;
+            }
+            Monitor.Exit(libMutex);
+        }
+
+        public void ClearData()
+        {
+            LogUtility.LogUtility.LogFile("SenderLib:ClearData", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+        }
+
+        public SenderPackLib(byte[] data, OnMessageReadyToTx onMsgReadyToTx) : base(onMsgReadyToTx)
+        {
+            Id = new IPEndPoint(0,0);
+            ChunkChainDataTypes.OnMessageReceived onPredMsg = new ChunkChainDataTypes.OnMessageReceived(ProcessPredMsg);
+            base.SetCallback((int)PackMsg.PackMsg.MsgKind_e.PACK_PRED_MSG_KIND, onPredMsg);
+            InitInstance(data);
+        }
+
+        public SenderPackLib(EndPoint id, OnMessageReadyToTx onMsgReadyToTx)
+            : base(onMsgReadyToTx)
+        {
+            Id = id;
+            ChunkChainDataTypes.OnMessageReceived onPredMsg = new ChunkChainDataTypes.OnMessageReceived(ProcessPredMsg);
+            base.SetCallback((int)PackMsg.PackMsg.MsgKind_e.PACK_PRED_MSG_KIND, onPredMsg);
+            InitInstance(null);
+        }    
+        List<ChunkMetaDataAndOffset> DecodePredictionMessage(byte[] buffer, int offset, out uint decodedOffsetInStream)
+        {
+            uint buffer_idx = (uint)offset;
+            uint chainsListSize;
+            List<ChunkMetaDataAndOffset> chainsList;
+
+            buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(buffer, buffer_idx, out decodedOffsetInStream);
+
+            buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(buffer, buffer_idx, out chainsListSize);
+
+            chainsList = new List<ChunkMetaDataAndOffset>((int)chainsListSize);
+
+            for (int chain_idx = 0; chain_idx < chainsListSize;chain_idx++ )
+            {
+                ChunkMetaDataAndOffset chunkMetaDataAndId = new ChunkMetaDataAndOffset();
+                uint chunkListSize;
+                
+                buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(buffer, buffer_idx, out chunkListSize);
+                chunkMetaDataAndId.chunkMetaData = new List<ChunkMetaData>((int)chunkListSize);
+                for (uint idx = 0; idx < chunkListSize; idx++)
+                {
+                    ChunkMetaData chunkMetaData = new ChunkMetaData();
+                    chunkMetaData.hint = buffer[buffer_idx++];
+                    buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Long(buffer, buffer_idx, out chunkMetaData.chunk);
+                    chunkMetaDataAndId.chunkMetaData.Add(chunkMetaData);
+                }
+                chainsList.Add(chunkMetaDataAndId);
+            }
+            return chainsList;
+        }
+        uint GetPredictionAckMessageSize(uint chunksCount)
+        {
+            return (sizeof(uint) + sizeof(uint) /*+ sizeof(uint)*/ + (uint)chunksCount * ChunkMetaData.GetSize());
+        }
+        void EncodePredictionAckMessage(byte[] buffer, int offset, ChunkMetaDataAndOffset chunkMetaDataAndId,uint chunksCount, uint CurrentStreamPosition)
+        {
+            uint buffer_idx = (uint)offset;
+            uint chunkCounter = 0;
+
+            buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Uint2ByteArray(buffer, buffer_idx, CurrentStreamPosition);
+
+            buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Uint2ByteArray(buffer, buffer_idx, chunksCount);
+            
+            foreach (ChunkMetaData chunkMetaData in chunkMetaDataAndId.chunkMetaData)
+            {
+                buffer[buffer_idx++] = chunkMetaData.hint;
+                buffer_idx +=
+                    ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Long2ByteArray(buffer, buffer_idx, chunkMetaData.chunk);
+                chunkCounter++;
+                if (chunkCounter == chunksCount)
+                {
+                    break;
+                }
+            }
+        }
+        
+        byte []ProcessPredMsg(byte []packet,int offset,byte Flags,int room_space)
+        {
+            List<ChunkMetaDataAndOffset> chunkMetaDataAndIdList;
+            List<ChunkMetaDataAndOffset> newChunkMetaDataAndIdList = null;
+            uint decodedOffsetInStream;
+            Monitor.Enter(libMutex);
+            uint offset_in_stream = TotalDataSent + TotalSavedData;
+            PredMsgReceived++;
+            LogUtility.LogUtility.LogFile("PRED Message", ModuleLogLevel);
+            chunkMetaDataAndIdList = DecodePredictionMessage(packet, offset, out decodedOffsetInStream);
+            LogUtility.LogUtility.LogFile("chainOffset " + Convert.ToString(decodedOffsetInStream) + " TotalSent " + Convert.ToString(TotalDataSent) + " TotalSaved " + Convert.ToString(TotalSavedData), ModuleLogLevel);
+            if (chunkMetaDataAndIdList == null)
+            {
+                Monitor.Exit(libMutex);
+                return null;
+            }
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " processing " + Convert.ToString(chunkMetaDataAndIdList.Count) + " chains, offset " + Convert.ToString(decodedOffsetInStream) + " offset in stream " + Convert.ToString(offset_in_stream), ModuleLogLevel);
+            
+            for (int i = 0; i < chunkMetaDataAndIdList.Count;i++)
+            {
+                uint decodedOffsetInStreamCopy = decodedOffsetInStream;
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " chunks in this chain " + Convert.ToString(chunkMetaDataAndIdList[i].chunkMetaData.Count), ModuleLogLevel);
+                while ((chunkMetaDataAndIdList[i].chunkMetaData.Count > 0) && (decodedOffsetInStreamCopy < offset_in_stream))
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " chunk  " + Convert.ToString(PackChunking.chunkToLen(chunkMetaDataAndIdList[i].chunkMetaData[0].chunk)), ModuleLogLevel);
+                    if ((decodedOffsetInStreamCopy + PackChunking.chunkToLen(chunkMetaDataAndIdList[i].chunkMetaData[0].chunk)) <= offset_in_stream)
+                    {
+                        decodedOffsetInStreamCopy += (uint)PackChunking.chunkToLen(chunkMetaDataAndIdList[i].chunkMetaData[0].chunk);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " remove entire chunk " + Convert.ToString(PackChunking.chunkToLen(chunkMetaDataAndIdList[i].chunkMetaData[0].chunk)) + " updated offset " + Convert.ToString(decodedOffsetInStreamCopy), ModuleLogLevel);
+                        chunkMetaDataAndIdList[i].chunkMetaData.RemoveAt(0);
+                    }
+                    else
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " updating offset chunk len " + Convert.ToString(PackChunking.chunkToLen(chunkMetaDataAndIdList[i].chunkMetaData[0].chunk)) + " delta to current stream pos " + Convert.ToString(offset_in_stream - decodedOffsetInStreamCopy) + " and removing first chunk ", ModuleLogLevel);
+                        //ChunkMetaDataAndOffset temp = chunkMetaDataAndIdList[i];
+                        ChunkMetaDataAndOffset temp = chunkMetaDataAndIdList.ElementAt(i);
+                        temp.offset = (uint)PackChunking.chunkToLen(chunkMetaDataAndIdList[i].chunkMetaData[0].chunk) - (offset_in_stream - decodedOffsetInStreamCopy);
+                        chunkMetaDataAndIdList[i].chunkMetaData.RemoveAt(0);
+                        //chunkMetaDataAndIdList.RemoveAt(i);
+                        //chunkMetaDataAndIdList.Insert(i, temp);
+                        if (newChunkMetaDataAndIdList == null)
+                        {
+                            newChunkMetaDataAndIdList = new List<ChunkMetaDataAndOffset>();
+                        }
+                        newChunkMetaDataAndIdList.Add(temp);
+                        break;
+                    }
+                }
+            }
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " leavingProcessPredMsg", ModuleLogLevel);
+            predMsg = newChunkMetaDataAndIdList;
+            Monitor.Exit(libMutex);
+            return null;
+        }
+        public byte[] SenderOnData(byte[] packet,int room_space)
+        {
+            uint DataSize;
+            byte MsgKind;
+            byte Flags;
+            int offset;
+            int rc;
+
+            if ((rc = PackMsg.PackMsg.DecodeMsg(packet, out DataSize, out Flags,out MsgKind, out offset)) != 0)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Message cannot be decoded", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                return null;
+            }
+            switch (MsgKind)
+            {
+                case (byte)PackMsg.PackMsg.MsgKind_e.PACK_PRED_MSG_KIND:
+                    return ProcessPredMsg(packet, offset, Flags, room_space);
+                default:
+                    return null;
+            }
+        }
+
+        public string GetDebugInfo()
+        {
+            string debugInfo = "";
+
+            debugInfo += " TotalDataReceived " + Convert.ToString(TotalDataReceived) + " TotalSent " + Convert.ToString(TotalDataSent) + " TotalSaved " + Convert.ToString(TotalSavedData) + " PredMsgReceived " + Convert.ToString(PredMsgReceived) + " PredAckSent" + Convert.ToString(PredAckMsgSent) + " DataMsgSent " + Convert.ToString(DataMsgSent) + " " + base.GetDebugInfo();
+            return debugInfo;
+        }
+    }
+}

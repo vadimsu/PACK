@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{17A487DD-AC32-426E-8E5A-70521EDD1B73}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SenderPackLib</RootNamespace>
+    <AssemblyName>SenderPackLib</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SenderPackLib.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ByteArrayScalarTypeConversionLib\ByteArrayScalarTypeConversionLib.csproj">
+      <Project>{F44564F8-6DA9-414C-8F87-9C7B7971BBAA}</Project>
+      <Name>ByteArrayScalarTypeConversionLib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\chunkChainDataTypes\ChunkChainDataTypes.csproj">
+      <Project>{4B9BD1CB-8028-4DFF-A905-D10C5FF4511D}</Project>
+      <Name>ChunkChainDataTypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LogUtility\LogUtility.csproj">
+      <Project>{040CE3A3-1086-4566-B087-2C25BFD273CA}</Project>
+      <Name>LogUtility</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\MyMemoryStream\MyMemoryStream.csproj">
+      <Project>{436F09D7-E24C-49DA-A036-4C5EE7C436AE}</Project>
+      <Name>MyMemoryStream</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\PackChunking\PackChunking.csproj">
+      <Project>{ECC9E1C3-D6FB-453F-A277-50C9E89B46A2}</Project>
+      <Name>PackChunking</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\PackMsg\PackMsg.csproj">
+      <Project>{61AB1E5E-4099-46CE-AFFB-1E5446DF43F2}</Project>
+      <Name>PackMsg</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Stream2Message\Stream2Message.csproj">
+      <Project>{2AD35CB1-FBE7-4A1D-A99E-6A99B9C3DD90}</Project>
+      <Name>Stream2Message</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
