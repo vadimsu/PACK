@@ -78,11 +78,6 @@ namespace ReceiverPackLib
         object libMutex;
         ChunkAndChainFileManager.ChunkAndChainFileManager chunkAndChainFileManager;
         LogUtility.LogUtility binaryLogging;
-        PerformanceMonitoring.PerformanceMonitoring EncodeTicks;
-        PerformanceMonitoring.PerformanceMonitoring PackTicks;
-        PerformanceMonitoring.PerformanceMonitoring StreamTicks;
-        PerformanceMonitoring.PerformanceMonitoring ProcessDataTicks;
-        PerformanceMonitoring.PerformanceMonitoring ProcessPredAckTicks;
         static void AddChain2Save(Chains2Save chain2Save)
         {
             Monitor.Enter(m_Chains2SaveMutex);
@@ -159,11 +154,6 @@ namespace ReceiverPackLib
             chunkAndChainFileManager = new ChunkAndChainFileManager.ChunkAndChainFileManager();
             inComingData = null;
             libMutex = new object();
-            EncodeTicks = new PerformanceMonitoring.PerformanceMonitoring("EncodeTicks");
-            PackTicks = new PerformanceMonitoring.PerformanceMonitoring("PackTicks");
-            StreamTicks = new PerformanceMonitoring.PerformanceMonitoring("StreamTicks");
-            ProcessDataTicks = new PerformanceMonitoring.PerformanceMonitoring("ProcessDataTicks");
-            ProcessPredAckTicks = new PerformanceMonitoring.PerformanceMonitoring("ProcessPredAckTicks");
         }
         public long GetTotalData()
         {
@@ -258,8 +248,6 @@ namespace ReceiverPackLib
 
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Composing Pred msg: chainOffset " + Convert.ToString(chainOffset), ModuleLogLevel);
 
-            EncodeTicks.EnterFunction();
-
             buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Uint2ByteArray(buffer, buffer_idx, chainOffset);
 
@@ -286,7 +274,6 @@ namespace ReceiverPackLib
                     //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " chunk " + Convert.ToString(chunkListAndChainId.chunks[idx]) + " len " + Convert.ToString(PackChunking.chunkToLen(chunkListAndChainId.chunks[idx])) + " is written to PRED", ModuleLogLevel);
                 }
             }
-            EncodeTicks.LeaveFunction();
         }
 
         List<ChunkMetaData> DecodePredictionAckMessage(byte[] buffer, int offset, out uint chunksCount)
@@ -315,10 +302,8 @@ namespace ReceiverPackLib
         {
             List<long> chunkList = new List<long>();
             Monitor.Enter(libMutex);
-            PackTicks.EnterFunction();
             /* process the stream (+reminder) to get chunks */
             int processed_bytes = packChunking.getChunks(chunkList, packet, packet_offset, packet.Length, /*is_last*/true, true);
-            PackTicks.LeaveFunction();
             uint offset = (uint)packet_offset;
             List<ChunkMetaData[]> chunkMetaDataList = new List<ChunkMetaData[]>(100);
             int idx = 0;
@@ -396,9 +381,7 @@ namespace ReceiverPackLib
             List<ChunkListAndChainId> chainChunkList;
             uint chainOffset;
 //            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " ProcessDataMsg: Total " + Convert.ToString(CurrentOffset) + " saved " + Convert.ToString(TotalSaved) + " flags " + Convert.ToString(Flags), ModuleLogLevel);
-            ProcessDataTicks.EnterFunction();
             predMsgSize = ReceiverOnDataMsg(packet, offset, Flags,out chainChunkList,out chainOffset);
-            ProcessDataTicks.LeaveFunction();
             if (predMsgSize == 0)
             {
                 return null;
@@ -415,14 +398,12 @@ namespace ReceiverPackLib
             List<ChunkMetaData> chunkMetaDataAndId;
             uint chunksCount;
             LogUtility.LogUtility.LogFile("PRED ACK message", LogLevels.LEVEL_LOG_HIGH);
-            ProcessPredAckTicks.EnterFunction();
             chunkMetaDataAndId = DecodePredictionAckMessage(packet, offset, out chunksCount);
             ReceiverOnPredictionConfirm(chunkMetaDataAndId, chunksCount);
             if ((Flags & PackMsg.PackMsg.LastChunkFlag) == PackMsg.PackMsg.LastChunkFlag)
             {
                 onTransactionEnd(onTransactionEndParam);
             }
-            ProcessPredAckTicks.LeaveFunction();
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " ProcessPredAckMsg: Total  " + Convert.ToString(CurrentOffset) , ModuleLogLevel);
             PredAckMsgReceived++;
             return null;
@@ -430,11 +411,6 @@ namespace ReceiverPackLib
 
         public void OnDispose()
         {
-            EncodeTicks.Log();
-            PackTicks.Log();
-            StreamTicks.Log();
-            ProcessPredAckTicks.Log();
-            ProcessDataTicks.Log();
             chunkAndChainFileManager.OnDispose();
         }
 
