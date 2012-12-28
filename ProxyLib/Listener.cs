@@ -70,9 +70,9 @@ namespace ProxyLib
                 serverSideProxy.SetOnGotResults(cbk);
                 Proxy.OnDisposed ondisp = new Proxy.OnDisposed(OnDisposed);
                 serverSideProxy.SetOnDisposed(ondisp);
-                Monitor.Enter(listLock);
+                /*Monitor.Enter(listLock);
                 clientsList.Add(serverSideProxy);
-                Monitor.Exit(listLock);
+                Monitor.Exit(listLock);*/
                 serverSideProxy.SetRemoteEndpoint(remoteEndpoint);
                 serverSideProxy.Start();
             }
@@ -104,7 +104,7 @@ namespace ProxyLib
         }
         public virtual void Start()
         {
-            socket.Listen(1000);
+            socket.Listen(1);
             socket.BeginAccept(m_OnAccept, null);
         }
 
@@ -127,7 +127,7 @@ namespace ProxyLib
             Monitor.Enter(listLock);
             foreach (Proxy proxy in clientsList)
             {
-                proxy.Dispose2(false);
+                proxy.Dispose();
             }
             clientsList.Clear();
             clientsList = null;

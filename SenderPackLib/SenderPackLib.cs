@@ -281,9 +281,13 @@ namespace SenderPackLib
         EndPoint Id;
 
         object libMutex;
+#if true
         static object predMsgListMutex = new object();
         static TimeSpan timeDelta = new TimeSpan(0, 0, 10, 0, 0);
         static Dictionary<IPAddress, LinkedList<PredMsgAndTimeStamp>> predMsgList = new Dictionary<IPAddress, LinkedList<PredMsgAndTimeStamp>>();
+        const int SecondsInMinute = 10;
+        const int Minutes2Sleep = 1;
+        const int MillisInSecond = 1000;
         static void PredMsgCacheTimeOutingThreadProc()
         {
             if (predMsgListMutex == null)
@@ -302,9 +306,10 @@ namespace SenderPackLib
                         foreach (PredMsgAndTimeStamp predMsgAndTimeStamp in linkedList)
                         {
                             TimeSpan ts = DateTime.Now - predMsgAndTimeStamp.timeStamp;
-                            if (ts.Subtract(timeDelta).Minutes == 0)
+                            LogUtility.LogUtility.LogFile(" time stamp diff " + Convert.ToString(ts.Minutes) + " " + Convert.ToString(ts.Seconds), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                            if (ts.Seconds > 10)
                             {
-                                LogUtility.LogUtility.LogFile(" add toremove list", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                                LogUtility.LogUtility.LogFile(" add to remove list", LogUtility.LogLevels.LEVEL_LOG_HIGH);
                                 removeList.Add(predMsgAndTimeStamp);
                             }
                         }
@@ -321,13 +326,14 @@ namespace SenderPackLib
                     LogUtility.LogUtility.LogFile("EXCEPTION " + exc.Message + " " + exc.StackTrace,LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 }
                 Monitor.Exit(predMsgListMutex);
-                Thread.Sleep(1000*60*10);
+                Thread.Sleep(MillisInSecond*SecondsInMinute*Minutes2Sleep);
             }
         }
         static System.Threading.Thread PredMsgCacheTimeOutingThread = new Thread(new ThreadStart(PredMsgCacheTimeOutingThreadProc));
         static bool isThreadStarted = false;
         public static void AddPredMsg(IPAddress ipAddress, List<ChunkMetaDataAndOffset> predMsg)
         {
+            bool found = false;
             LinkedList <PredMsgAndTimeStamp> list = null;
             PredMsgAndTimeStamp predMsgAndTimeStamp = new PredMsgAndTimeStamp();
             predMsgAndTimeStamp.predMsg = predMsg;
@@ -336,8 +342,52 @@ namespace SenderPackLib
             if (!predMsgList.TryGetValue(ipAddress, out list))
             {
                 list = new LinkedList<PredMsgAndTimeStamp>();
-                predMsgList.Add(ipAddress,list);
+                predMsgList.Add(ipAddress, list);
                 LogUtility.LogUtility.LogFile("Added new list for " + Convert.ToString(ipAddress), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+            }
+#if false
+            else
+            {
+                /* for each message from that host */
+                foreach (PredMsgAndTimeStamp msg in list)
+                {
+                    /* for each chain in the message */
+                    foreach (ChunkMetaDataAndOffset chMetaDataAndOffset in msg.predMsg)
+                    {
+                        int existingChunksListLen = msg.predMsg.Count;
+                        int newChunksListLen = predMsg.Count;
+                        int existingChunksListIdx = 0;
+                        int newChunksListIdx = 0;
+                        while((existingChunksListIdx < existingChunksListLen)&&(newChunksListIdx < newChunksListLen))
+                        {
+                            int existingChunkCount = msg.predMsg[existingChunksListIdx].chunkMetaData.Count;
+                            int newChunkCount = predMsg[newChunksListIdx].chunkMetaData.Count;
+                            bool notEqual = false;
+                            int existingChunkIdx = 0;
+                            int newChunkIdx = 0;
+                            while((existingChunkIdx < existingChunkCount)&&(newChunkIdx < newChunksListLen))
+                            {
+                                if(msg.predMsg[existingChunksListIdx].chunkMetaData[existingChunkIdx].chunk !=
+                                    predMsg[newChunksListIdx].chunkMetaData[newChunkIdx].chunk)
+                                {
+                                    notEqual = true;
+                                    break;
+                                }
+                                existingChunkIdx++;
+                                newChunkIdx++;
+                            }
+                            if(!notEqual)
+                            {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+#endif
+            if (list.Count >= 10)
+            {
+                list.RemoveLast();
             }
             LogUtility.LogUtility.LogFile("PRED Message added to list for " + Convert.ToString(ipAddress), LogUtility.LogLevels.LEVEL_LOG_HIGH);
             list.AddFirst(predMsgAndTimeStamp);
@@ -377,13 +427,35 @@ namespace SenderPackLib
                 LogUtility.LogUtility.LogFile("EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
         }
+#else
+        LinkedList<PredMsgAndTimeStamp> m_PredMsgList;
+        public void AddPredMsg(IPAddress ipAddress, List<ChunkMetaDataAndOffset> predMsg)
+        {
+            PredMsgAndTimeStamp pmts = new PredMsgAndTimeStamp();
+            pmts.predMsg = predMsg;
+            pmts.timeStamp = DateTime.Now;
+            m_PredMsgList = new LinkedList<PredMsgAndTimeStamp>();
+            m_PredMsgList.AddFirst(pmts);
+        }
+        LinkedList<PredMsgAndTimeStamp> GetPredMsg4IpAddress(IPAddress ipAddress)
+        {
+            return m_PredMsgList;
+        }
+        void UpdateTimeStamp(PredMsgAndTimeStamp predMsgAndTimeStamp)
+        {
+        }
+#endif
         void InitInstance(byte[]data)
         {
+#if true
             if (!isThreadStarted)
             {
                 isThreadStarted = true;
                 PredMsgCacheTimeOutingThread.Start();
             }
+#else
+            m_PredMsgList = null;
+#endif
             packChunking = new PackChunking(8);
             TotalDataReceived = 0;
             TotalDataSent = 0;

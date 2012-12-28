@@ -35,23 +35,10 @@ namespace ChunkAndChainFileManager
 #else
         static FileManager.FileManager fileManager = new FileManager.NonRamFileManager("datafiles");
 #endif
-        PerformanceMonitoring.PerformanceMonitoring AddUpdateChunkTicks;
-        PerformanceMonitoring.PerformanceMonitoring BuildChainAndSaveTicks;
-        PerformanceMonitoring.PerformanceMonitoring ChainMatchTicks;
-        PerformanceMonitoring.PerformanceMonitoring EncodeTicks;
-        PerformanceMonitoring.PerformanceMonitoring GetChainTicks;
-        PerformanceMonitoring.PerformanceMonitoring FindChunkInChainTicks;
 
         public ChunkAndChainFileManager()
         {
             chainId4Lookup = 0;
-
-            AddUpdateChunkTicks = new PerformanceMonitoring.PerformanceMonitoring("AddUpdateChunkTicks");
-            BuildChainAndSaveTicks =new PerformanceMonitoring.PerformanceMonitoring("BuildChainAndSaveTicks");
-            ChainMatchTicks = new PerformanceMonitoring.PerformanceMonitoring("ChainMatchTicks");
-            EncodeTicks = new PerformanceMonitoring.PerformanceMonitoring("EncodeDecodeTicks");
-            GetChainTicks = new PerformanceMonitoring.PerformanceMonitoring("GetChainTicks");
-            FindChunkInChainTicks = new PerformanceMonitoring.PerformanceMonitoring("FindChunkInChainTicks");
         }
         
         static void GetChainAsByteArray(long[] chunks, out byte[] buffer)
@@ -301,40 +288,32 @@ namespace ChunkAndChainFileManager
             ChunkListAndChainId chunkListAndChainId;
             bool AtLeastEqualChainFound = false;
 
-            ChainMatchTicks.EnterFunction();
 #if false
             if (chunkMap.TryGetValue(chunkId, out chunkCB))
 #else
             if (!GetChunkCB(chunkList[chunkListIdx], out chunkCB))
 #endif
             {
-                GetChainTicks.LeaveFunction();
 //                LogUtility.LogUtility.LogFile("Cannot get chunk " + Convert.ToString(chunkList[chunkListIdx]), LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 return -1;
             }
 //            LogUtility.LogUtility.LogFile("****chunk to math found " + Convert.ToString(PackChunking.chunkToLen(chunkList[chunkListIdx])), ModuleLogLevel);
             foreach (long ch in chunkCB.chains)
             {
-                GetChainTicks.EnterFunction();
                 if (!GetChain(ch, out chain))
                 {
-                    GetChainTicks.LeaveFunction();
                     LogUtility.LogUtility.LogFile("Cannot get chain!!!! " + Convert.ToString(ch), ModuleLogLevel);
                     CannotGetChain++;
                     continue;
                 }
                 //LogUtility.LogUtility.LogFile("chain " + Convert.ToString(ch) + " chunks " + Convert.ToString(chain.chunkIds.Length), ModuleLogLevel);
-                GetChainTicks.LeaveFunction();
                 int chunk_idx;
-                FindChunkInChainTicks.EnterFunction();
                 if (!FindChunkInChain(chain.chunkIds, chunkList[chunkListIdx], out chunk_idx))
                 {
-                    FindChunkInChainTicks.LeaveFunction();
 //                    LogUtility.LogUtility.LogFile("Cannot find chunk!!!! " + Convert.ToString(chunkList[chunkListIdx]) + " in chain " + Convert.ToString(ch), ModuleLogLevel);
                     CannotFindChunkInChain++;
                     continue;
                 }
-                FindChunkInChainTicks.LeaveFunction();
                 //LogUtility.LogUtility.LogFile("chunk id in chain " + Convert.ToString(chunk_idx), ModuleLogLevel);
                 foundChainLength = CompareChains(chunkList, chunkListIdx+1, chain.chunkIds, chunk_idx + 1);
                 switch (foundChainLength)
@@ -428,11 +407,6 @@ namespace ChunkAndChainFileManager
 
         public void OnDispose()
         {
-            AddUpdateChunkTicks.Log();
-            BuildChainAndSaveTicks.Log();
-            ChainMatchTicks.Log();
-            GetChainTicks.Log();
-            FindChunkInChainTicks.Log();
         }
 
         static uint GetChunkCB(byte[] buffer, uint offset, out ChunkCB chunkCB)

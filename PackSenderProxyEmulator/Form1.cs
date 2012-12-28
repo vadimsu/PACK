@@ -50,7 +50,7 @@ namespace PackSenderProxyEmulator
             {
                 ProxyType = 0;
             }
-            statistics1.DebugMode = /*false*/true;
+            statistics1.DebugMode = false/*true*/;
         }
 
         void radioButtonLogHigh2_Click(object sender, EventArgs e)

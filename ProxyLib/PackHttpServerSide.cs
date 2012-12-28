@@ -105,7 +105,7 @@ namespace ProxyLib
             bool ProrietaryRxMutexAvailable = NonProprietaryRxMutexAvailable();
             bool clientMutexAvailable = ClientMutexAvailable();
             bool destinationMutexAvailable = DestinationMutexAvailable();
-            string debufInfo = "Received client " + Convert.ToString(ReceivedClient) + " Transmitted client " + Convert.ToString(TransmittedClient) + " NonProprietarySegmentRxInProgress " + Convert.ToString(NonProprietarySegmentRxInProgress) +
+            string debufInfo = Convert.ToString(Id) + " Received client " + Convert.ToString(ReceivedClient) + " Transmitted client " + Convert.ToString(TransmittedClient) + " NonProprietarySegmentRxInProgress " + Convert.ToString(NonProprietarySegmentRxInProgress) +
                 " NonProprietarySegmentTxInProgress " + Convert.ToString(NonProprietarySegmentTxInProgress) +
                 " ProprietarySegmentRxInProgress " + Convert.ToString(ProprietarySegmentRxInProgress) +
                 " ProprietarySegmentTxInProgress " + Convert.ToString(ProprietarySegmentTxInProgress) +

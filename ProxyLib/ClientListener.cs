@@ -37,9 +37,9 @@ namespace ProxyLib
             clientSideProxy.SetOnGotResults(cbk);
             Proxy.OnDisposed ondisp = new Proxy.OnDisposed(OnDisposed);
             clientSideProxy.SetOnDisposed(ondisp);
-            Monitor.Enter(listLock);
+            /*Monitor.Enter(listLock);
             clientsList.Add(clientSideProxy);
-            Monitor.Exit(listLock);
+            Monitor.Exit(listLock);*/
             clientSideProxy.Start();
             socket.BeginAccept(m_OnAccept, null);
         }

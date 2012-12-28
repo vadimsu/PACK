@@ -37,7 +37,7 @@ namespace PackReceiverProxyEmulator
                 File.Delete(LogUtility.LogUtility.FileName);
             }
             Listener.InitGlobalObjects();
-            statistics1.DebugMode = /*false*/true;
+            statistics1.DebugMode = false/*true*/;
         }
 
         void radioButtonLogHigh2_Click(object sender, EventArgs e)

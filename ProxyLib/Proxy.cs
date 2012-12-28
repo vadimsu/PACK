@@ -28,6 +28,12 @@ namespace ProxyLib
         protected object ProprietarySegmentRxMutex;
         protected object NonProprietarySegmentRxMutex;
         protected object disposeMutex;
+        protected SocketAsyncEventArgs m_OnNonProprietaryReceivedCbk;
+        protected SocketAsyncEventArgs m_OnNonProprietaryTransmittedCbk;
+        protected SocketAsyncEventArgs m_OnProprietaryReceivedCbk;
+        protected SocketAsyncEventArgs m_OnProprietaryTransmittedCbk;
+        SocketAsyncEventArgs m_clientSideDiscAsyncArgs;
+        SocketAsyncEventArgs m_ServerSideDiscAsyncArgs;
         static protected object proprietaryLibMutex = new object();
 
         protected object clientStreamMutex;
@@ -59,10 +65,6 @@ namespace ProxyLib
         protected OnGotResults onGotResults;
         public delegate void OnDisposed(Proxy p);
         OnDisposed onDisposed;
-        protected AsyncCallback m_OnNonProprietaryReceivedCbk;
-        protected AsyncCallback m_OnProprietaryReceivedCbk;
-        protected AsyncCallback m_OnNonProprietaryTransmittedCbk;
-        protected AsyncCallback m_OnProprietaryTransmittedCbk;
 
         public static void InitGlobalObjects()
         {
@@ -94,10 +96,15 @@ namespace ProxyLib
             ProprietarySementRxBuf = new byte[8192*4];
             rxStateMachine = new RxStateMachine(Id);
             txStateMachine = new TxStateMachine(Id);
-            m_OnNonProprietaryReceivedCbk = new AsyncCallback(OnNonProprietarySegmentReceived);
-            m_OnNonProprietaryTransmittedCbk = new AsyncCallback(OnNonProprietarySegmentTransmitted);
-            m_OnProprietaryReceivedCbk = new AsyncCallback(OnProprietarySegmentReceived);
-            m_OnProprietaryTransmittedCbk = new AsyncCallback(OnProprietarySegmentTransmitted);
+            m_OnNonProprietaryReceivedCbk = new SocketAsyncEventArgs();
+            m_OnNonProprietaryTransmittedCbk = new SocketAsyncEventArgs();
+            m_OnProprietaryReceivedCbk = new SocketAsyncEventArgs();
+            m_OnProprietaryTransmittedCbk = new SocketAsyncEventArgs();
+
+            m_OnNonProprietaryReceivedCbk.Completed += new EventHandler<SocketAsyncEventArgs>(OnNonProprietarySegmentReceived);
+            m_OnNonProprietaryTransmittedCbk.Completed += new EventHandler<SocketAsyncEventArgs>(OnNonProprietarySegmentTransmitted);
+            m_OnProprietaryReceivedCbk.Completed += new EventHandler<SocketAsyncEventArgs>(OnProprietarySegmentReceived);
+            m_OnProprietaryTransmittedCbk.Completed += new EventHandler<SocketAsyncEventArgs>(OnProprietarySegmentTransmitted);
             ShutDownFlag = false;
             TransmittedClient = 0;
             ReceivedClient = 0;
@@ -113,12 +120,17 @@ namespace ProxyLib
             destinationStream = new MyMemoryStream.MyMemoryStream();
             onGotResults = null;
             onDisposed = null;
+            m_clientSideDiscAsyncArgs = new SocketAsyncEventArgs();
+            m_clientSideDiscAsyncArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnClientDisconnected);
+            m_ServerSideDiscAsyncArgs = new SocketAsyncEventArgs();
+            m_ServerSideDiscAsyncArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnDestinationDisconnected);
             LogUtility.LogUtility.LogFile("Started at " + DateTime.Now.ToLongTimeString(), LogUtility.LogLevels.LEVEL_LOG_HIGH);
         }
-        protected abstract void OnProprietarySegmentReceived(IAsyncResult ar);
-        protected abstract void OnProprietarySegmentTransmitted(IAsyncResult ar);
-        protected abstract void OnNonProprietarySegmentReceived(IAsyncResult ar);
-        protected abstract void OnNonProprietarySegmentTransmitted(IAsyncResult ar);
+
+        protected abstract void OnProprietarySegmentReceived(object sender, SocketAsyncEventArgs e);
+        protected abstract void OnProprietarySegmentTransmitted(object sender, SocketAsyncEventArgs e);
+        protected abstract void OnNonProprietarySegmentReceived(object sender, SocketAsyncEventArgs e);
+        protected abstract void OnNonProprietarySegmentTransmitted(object sender, SocketAsyncEventArgs e);
         virtual public void SetRemoteEndpoint(IPEndPoint ipEndpoint)
         {
         }
@@ -187,6 +199,42 @@ namespace ProxyLib
                 Monitor.Exit(destinationStreamMutex);
             }
             return ret;
+        }
+        protected abstract bool ClientTxInProgress();
+        protected virtual void CheckConnectionAndShutDownIfGone()
+        {
+            try
+            {
+                if (destinationSideSocket.Poll(1, SelectMode.SelectRead) && destinationSideSocket.Available == 0)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + "  server side connection is broken ", ModuleLogLevel);
+                    //                            m_ServerSocket.Shutdown(SocketShutdown.Both);
+                    if ((ClientTxInProgress()) || (!IsClientTxQueueEmpty()))
+                    {
+                        return;
+                    }
+                    Dispose();
+                }
+            }
+            catch (Exception exc)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + "  " + exc.Message + " " + exc.StackTrace, ModuleLogLevel);
+            }
+        }
+        protected virtual bool IsAlive()
+        {
+            try
+            {
+                if (!destinationSideSocket.Connected)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) +" Socket disconnected ", ModuleLogLevel);
+                }
+                return destinationSideSocket.Connected;
+            }
+            catch
+            {
+                return false;
+            }
         }
         public void EnterProprietarySegmentTxCriticalArea()
         {
@@ -456,7 +504,7 @@ namespace ProxyLib
 
                 isMsg = false;
                 IsMsgBeingTransmitted2Client = false;
-#if false
+#if true
                 streamLength = (uint)clientStream.Length;
                 byte []bytes = clientStream.GetBytes();
 #else
@@ -550,61 +598,62 @@ namespace ProxyLib
         }
         
         public abstract void Start();
+        protected virtual void NonProprietarySegmentTransmit()
+        {
+        }
+        protected virtual void ProprietarySegmentTransmit()
+        {
+        }
+        protected virtual void NonProprietarySegmentReceive()
+        {
+        }
+        protected virtual void ProprietarySegmentReceive()
+        {
+        }
 
-        void OnDestinationDisconnected(IAsyncResult ar)
+        protected virtual void ReStartAllOperations(bool skipCheckIsAlive)
+        {
+            if (!skipCheckIsAlive)
+            {
+                if (!IsAlive())
+                {
+                    return;
+                }
+            }
+            NonProprietarySegmentTransmit();
+            ProprietarySegmentTransmit();
+            NonProprietarySegmentReceive();
+            ProprietarySegmentReceive();
+        }
+
+        void OnDestinationDisconnected(object sender, SocketAsyncEventArgs e)
         {
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " OnDestinationDisconnected", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            try
-            {
-                destinationSideSocket.EndDisconnect(ar);
-            }
-            catch (Exception exc)
-            {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            }
+            
             try
             {
                 destinationSideSocket.Close();
+                //m_clientSideDiscAsyncArgs.DisconnectReuseSocket = false;
+                //clientSideSocket.DisconnectAsync(m_clientSideDiscAsyncArgs);
             }
             catch (Exception exc)
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            bool success = false;
             try
             {
-                clientSideSocket.BeginDisconnect(false, new AsyncCallback(OnClientDisconnected), null);
-                success = true;
+//                clientSideSocket.BeginDisconnect(false, new AsyncCallback(OnClientDisconnected), null);
+                clientSideSocket.DisconnectAsync(m_clientSideDiscAsyncArgs);
             }
             catch (Exception exc)
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            }
-            if (!success)
-            {
-                try
-                {
-                    clientSideSocket.Close();
-                    CleanUp();
-                }
-                catch (Exception exc)
-                {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                }
             }
         }
-        
-        void OnClientDisconnected(IAsyncResult ar)
+
+        void OnClientDisconnected(object sender, SocketAsyncEventArgs e)
         {
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " OnClientDisconnected", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            try
-            {
-                clientSideSocket.EndDisconnect(ar);
-            }
-            catch (Exception exc)
-            {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            }
             try
             {
                 clientSideSocket.Close();
@@ -627,119 +676,6 @@ namespace ProxyLib
             {
                 onDisposed(this);
             }
-        }
-        public bool Dispose2(bool isServerSide)
-        {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " In Dispose2 " + DateTime.Now.ToLongTimeString(), LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            if (isServerSide)
-            {
-                if ((destinationSideSocket.Available > 0) || (NonProprietarySegmentTxInProgress) || (ProprietarySegmentTxInProgress))
-                {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " available" + Convert.ToString(destinationSideSocket.Available) + " non-proprietary tx is in progress " + Convert.ToString(NonProprietarySegmentTxInProgress) + " Proprietary tx is in progress " + Convert.ToString(ProprietarySegmentTxInProgress), LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                    return false;
-                }
-                EnterProprietaryLibCriticalArea();
-                bool isClientEmpty = true;
-                bool isClientConnected = false;
-                try
-                {
-                    isClientEmpty = IsClientTxQueueEmpty();
-                }
-                catch
-                {
-                }
-                if (!isClientEmpty && (!ShutDownFlag))
-                {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " client queue is not empty. setting shutdown flag", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                    OnBeginShutdown();
-                    ShutDownFlag = true;
-                    LeaveProprietaryLibCriticalArea();
-                    return false;
-                }
-                else
-                {
-                    try
-                    {
-                        isClientConnected = (clientSideSocket == null) ? false : ((clientSideSocket.Connected) ? true : false);
-                    }
-                    catch
-                    {
-                    }
-                    if (!isClientEmpty &&  isClientConnected)
-                    {
-                        LeaveProprietaryLibCriticalArea();
-                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " client queue is not empty and client socket is connected. return", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                        return false;
-                    }
-                }
-                LeaveProprietaryLibCriticalArea();
-            }
-            if (disposeMutex == null)
-            {
-                return true;
-            }
-            try
-            {
-                if (!Monitor.TryEnter(disposeMutex))
-                {
-                    return true;
-                }
-            }
-            catch
-            {
-                return true;
-            }
-            
-            SocketAsyncEventArgs se = new SocketAsyncEventArgs();
-            bool success = false;
-            try
-            {
-                //destinationSideSocket.DisconnectAsync(se);
-                destinationSideSocket.Shutdown(SocketShutdown.Both);
-                //destinationSideSocket.Disconnect(false);
-                //destinationSideSocket.BeginDisconnect(false, new AsyncCallback(OnDestinationDisconnected), null);
-                //success = true;
-            }
-            catch (Exception exc)
-            {
-                //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            }
-            if (!success)
-            {
-                try
-                {
-                    destinationSideSocket.Close();
-                }
-                catch (Exception exc)
-                {
-                    //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                }
-                try
-                {
-                    //clientSideSocket.DisconnectAsync(se);
-                    clientSideSocket.Shutdown(SocketShutdown.Both);
-                    //clientSideSocket.Disconnect(false);
-                    //clientSideSocket.BeginDisconnect(false, new AsyncCallback(OnClientDisconnected), null);
-                    //success = true;
-                }
-                catch (Exception exc)
-                {
-                    //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                }
-                if (!success) 
-                {
-                    try
-                    {
-                        clientSideSocket.Close();
-                    }
-                    catch (Exception exc)
-                    {
-                        //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                    }
-                }
-            }
-            CleanUp();
-            return false;
         }
         void CleanUp()
         {
@@ -770,6 +706,8 @@ namespace ProxyLib
                 }
                 txStateMachine = null;
                 rxStateMachine = null;
+                destinationSideSocket = null;
+                clientSideSocket = null;
                 LogUtility.LogUtility.LogFile("ID " + Convert.ToString(Id) + " TransmittedClient " + Convert.ToString(TransmittedClient) + " ReceivedClient " + Convert.ToString(ReceivedClient) + " TransmittedServer " + Convert.ToString(TransmittedServer) + " ReceivedServer " + Convert.ToString(ReceivedServer) + " TransmittedMsgsClient " + Convert.ToString(TransmittedMsgsClient) + " ReceivedMsgs " + Convert.ToString(ReceivedMsgs) + " SubmittedMsgsClient " + Convert.ToString(SubmittedMsgsClient) + " SubmittedMsgsServer " + Convert.ToString(SubmittedMsgsServer) + " SubmittedClient " + Convert.ToString(SubmittedClient) + " SubmittedServer " + Convert.ToString(SubmittedServer), LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 Disposed();
                 disposeMutex = null;
@@ -779,7 +717,17 @@ namespace ProxyLib
                 //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
         }
-
+        public void Dispose()
+        {
+            try
+            {
+                destinationSideSocket.DisconnectAsync(m_ServerSideDiscAsyncArgs);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + "  connection is broken - DONE ", ModuleLogLevel);
+            }
+            catch (Exception exc)
+            {
+            }
+        }
         public static void Flush()
         {
             ReceiverPackLib.ReceiverPackLib.Flush();

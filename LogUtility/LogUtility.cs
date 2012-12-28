@@ -20,7 +20,7 @@ namespace LogUtility
     {
         public static string FileName = "log.txt";
         static Queue logEntriesList = new Queue();
-        static Thread logThread = null;
+        static Thread logThread =  new Thread(new ThreadStart(LogThread));
         private static bool Silent = false;
         private static byte CurrentLevel = (byte)LogLevels.LEVEL_LOG_HIGH3;
         static Semaphore sm = new Semaphore(0,1);
@@ -82,12 +82,12 @@ namespace LogUtility
             }
             entry = DateTime.Now.TimeOfDay.ToString() + " " + Convert.ToString(Thread.CurrentThread.ManagedThreadId) + " " + entry;
             Queue.Synchronized(logEntriesList).Enqueue(entry);
-            if (logThread == null)
+            Monitor.Enter(logThread);
+            if(!logThread.IsAlive)
             {
-                ThreadStart ts = new ThreadStart(LogThread);
-                logThread = new Thread(ts);
                 logThread.Start();
             }
+            Monitor.Exit(logThread);
             try
             {
                 sm.Release();

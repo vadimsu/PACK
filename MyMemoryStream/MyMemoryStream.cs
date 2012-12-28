@@ -58,6 +58,11 @@ namespace MyMemoryStream
             memoryStream.Write(buff, 0, buff.Length);
         }
 
+        public void AddBytes(byte[] buff, int count)
+        {
+            memoryStream.Write(buff, 0, count);
+        }
+
         public long Length
         {
             get

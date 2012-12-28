@@ -121,7 +121,6 @@ namespace ProxyLib
             catch(Exception exc)
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                Dispose2(false);
             }
         }
         bool IsValidQuery()
@@ -225,6 +224,7 @@ namespace ProxyLib
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Trying to connect destination " + Convert.ToString(DestinationEndPoint), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
                 destinationSideSocket.Connect(DestinationEndPoint);
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " destination connected ", LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                m_OnceConnected = true;
                 QueueElement queueElement = new QueueElement();
                 if (m_HttpRequestType.ToUpper().Equals("CONNECT"))
                 { //HTTPS
