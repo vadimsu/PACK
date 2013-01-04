@@ -59,6 +59,7 @@ namespace ProxyLib
         protected uint SubmittedMsgsServer;
         protected uint SubmittedClient;
         protected uint SubmittedServer;
+        protected uint Saved;
         protected MyMemoryStream.MyMemoryStream clientStream;
         protected MyMemoryStream.MyMemoryStream destinationStream;
         public delegate void OnGotResults(object res);
@@ -116,6 +117,7 @@ namespace ProxyLib
             SubmittedMsgsServer = 0;
             SubmittedClient = 0;
             SubmittedServer = 0;
+            Saved = 0;
             clientStream = new MyMemoryStream.MyMemoryStream();
             destinationStream = new MyMemoryStream.MyMemoryStream();
             onGotResults = null;
@@ -677,6 +679,18 @@ namespace ProxyLib
                 onDisposed(this);
             }
         }
+        protected virtual uint GetSaved()
+        {
+            return Saved;
+        }
+        protected virtual uint GetPreSaved()
+        {
+            return 0;
+        }
+        protected virtual uint GetPostSaved()
+        {
+            return 0;
+        }
         void CleanUp()
         {
             try
@@ -708,13 +722,13 @@ namespace ProxyLib
                 rxStateMachine = null;
                 destinationSideSocket = null;
                 clientSideSocket = null;
-                LogUtility.LogUtility.LogFile("ID " + Convert.ToString(Id) + " TransmittedClient " + Convert.ToString(TransmittedClient) + " ReceivedClient " + Convert.ToString(ReceivedClient) + " TransmittedServer " + Convert.ToString(TransmittedServer) + " ReceivedServer " + Convert.ToString(ReceivedServer) + " TransmittedMsgsClient " + Convert.ToString(TransmittedMsgsClient) + " ReceivedMsgs " + Convert.ToString(ReceivedMsgs) + " SubmittedMsgsClient " + Convert.ToString(SubmittedMsgsClient) + " SubmittedMsgsServer " + Convert.ToString(SubmittedMsgsServer) + " SubmittedClient " + Convert.ToString(SubmittedClient) + " SubmittedServer " + Convert.ToString(SubmittedServer), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile("ID " + Convert.ToString(Id) + " TransmittedClient " + Convert.ToString(TransmittedClient) + " ReceivedClient " + Convert.ToString(ReceivedClient) + " TransmittedServer " + Convert.ToString(TransmittedServer) + " ReceivedServer " + Convert.ToString(ReceivedServer) + " TransmittedMsgsClient " + Convert.ToString(TransmittedMsgsClient) + " ReceivedMsgs " + Convert.ToString(ReceivedMsgs) + " SubmittedMsgsClient " + Convert.ToString(SubmittedMsgsClient) + " SubmittedMsgsServer " + Convert.ToString(SubmittedMsgsServer) + " SubmittedClient " + Convert.ToString(SubmittedClient) + " SubmittedServer " + Convert.ToString(SubmittedServer) + " Saved " + GetSaved() + " PreSaved " + GetPreSaved() + " PostSaved " + GetPostSaved(), LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 Disposed();
                 disposeMutex = null;
             }
             catch (Exception exc)
             {
-                //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
         }
         public void Dispose()

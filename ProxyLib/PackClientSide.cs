@@ -64,6 +64,14 @@ namespace ProxyLib
             NonProprietarySegmentTransmit();
             LogUtility.LogUtility.LogFile("Leaving OnDataReceived", ModuleLogLevel);
         }
+        protected override uint GetSaved()
+        {
+            if (receiverPackLib != null)
+            {
+                return receiverPackLib.GetTotalDataSaved();
+            }
+            return base.GetSaved();
+        }
         protected override void OnProprietarySegmentMsgReceived()
         {
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentMsgReceived", ModuleLogLevel);

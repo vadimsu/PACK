@@ -22,6 +22,14 @@ namespace ProxyLib
             onMessageReadyToTx = new OnMessageReadyToTx(OnMsgRead4Tx);
             senderPackLib = new SenderPackLib.SenderPackLib(Id,onMessageReadyToTx);
         }
+        protected override uint GetSaved()
+        {
+            if (senderPackLib != null)
+            {
+                return senderPackLib.GetTotalSavedData();
+            }
+            return base.GetSaved();
+        }
         void OnMsgRead4Tx(object param, byte[] msg)
         {
             LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", ModuleLogLevel);
@@ -135,6 +143,14 @@ namespace ProxyLib
             res[3] = senderPackLib.GetTotalSavedData();    
             res[4] = GenerateDebugInfo();
             return res;
+        }
+        protected override uint GetPreSaved()
+        {
+            return senderPackLib.GetTotalPreSavedData();
+        }
+        protected override uint GetPostSaved()
+        {
+            return senderPackLib.GetTotalPostSavedData();
         }
         protected override void Disposing()
         {

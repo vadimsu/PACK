@@ -47,7 +47,7 @@ namespace ProxyLib
         }
         protected override void NonProprietarySegmentTransmit()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentTransmit", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentTransmit tx client " + Convert.ToString(TransmittedClient) + " rx server "+ Convert.ToString(ReceivedServer), ModuleLogLevel);
             EnterNonProprietarySegmentTxCriticalArea();
 
             try
@@ -71,9 +71,19 @@ namespace ProxyLib
                 uint length;
                 bool isMsg;
                 byte[] buff = (byte [])GetClient2Transmit(out length,out isMsg);
-                m_OnNonProprietaryTransmittedCbk.SetBuffer(buff, 0, buff.Length);
-                clientSideSocket.SendAsync(m_OnNonProprietaryTransmittedCbk);
-                NonProprietarySegmentTxInProgress = true;
+                if (buff != null)
+                {
+                    m_OnNonProprietaryTransmittedCbk.SetBuffer(buff, 0, buff.Length);
+                    if (!clientSideSocket.SendAsync(m_OnNonProprietaryTransmittedCbk))
+                    {
+                        TransmittedClient += (uint)buff.Length;
+                        OnClientTransmitted(buff.Length);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentTransmit (completed synchronously)", ModuleLogLevel);
+                        LeaveNonProprietarySegmentTxCriticalArea();
+                        return;
+                    }
+                    NonProprietarySegmentTxInProgress = true;
+                }
             }
             catch (Exception exc)
             {
@@ -173,6 +183,27 @@ namespace ProxyLib
             CheckConnectionAndShutDownIfGone();
             //NonProprietarySegmentTransmit();
         }
+        protected void OnProprietarySegmentTransmitted(int transmitted)
+        {
+            if (txStateMachine.IsInBody())
+            {
+                if (txStateMachine.IsWholeMessage())
+                {
+                    OnDestinationTransmitted(transmitted - txStateMachine.GetHeaderLength());
+                }
+                else
+                {
+                    OnDestinationTransmitted(transmitted);
+                }
+            }
+            TransmittedServer += (uint)transmitted;
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sent (proprietary segment) " + Convert.ToString(transmitted), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+            txStateMachine.OnTxComplete((uint)transmitted);
+            if (txStateMachine.IsTransactionCompleted())
+            {
+                txStateMachine.ClearMsgBody();
+            }
+        }
         protected override void OnProprietarySegmentTransmitted(object sender, SocketAsyncEventArgs e)
         {
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentTransmitted", ModuleLogLevel);
@@ -194,17 +225,7 @@ namespace ProxyLib
                     LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " error on EndSend " + Convert.ToString(Ret), LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     goto end_server_tx;
                 }
-                if (txStateMachine.IsInBody())
-                {
-                    OnDestinationTransmitted(Ret);
-                }
-                TransmittedServer += (uint)Ret;
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sent (proprietary segment) " + Convert.ToString(Ret), LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                txStateMachine.OnTxComplete((uint)Ret);
-                if (txStateMachine.IsTransactionCompleted())
-                {
-                    txStateMachine.ClearMsgBody();
-                }
+                OnProprietarySegmentTransmitted(Ret);
                 ProprietarySegmentTxInProgress = false;
             }
             catch (Exception exc)
@@ -223,7 +244,12 @@ end_server_tx:
             {
                 m_OnProprietaryTransmittedCbk.SetBuffer(buff2transmit, 0, buff2transmit.Length);
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Trying to send to destination " + Convert.ToString(buff2transmit.Length), ModuleLogLevel);
-                destinationSideSocket.SendAsync(m_OnProprietaryTransmittedCbk);
+                if (!destinationSideSocket.SendAsync(m_OnProprietaryTransmittedCbk))
+                {
+                    OnProprietarySegmentTransmitted(buff2transmit.Length);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving _ProprietarySegmentTransmit (completed synchronously)", ModuleLogLevel);
+                    return;
+                }
                 ProprietarySegmentTxInProgress = true;
             }
             catch (Exception exc)
@@ -327,7 +353,7 @@ end_server_tx:
                     txStateMachine.SetMsgBody(data);
                 }
                 
-                byte[] buff2transmit = txStateMachine.GetBytes();
+                byte[] buff2transmit = txStateMachine.GetBytes(8192);
                 if (buff2transmit != null)
                 {
                     _ProprietarySegmentTransmit(buff2transmit);

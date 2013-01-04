@@ -51,9 +51,12 @@ namespace PackSenderProxyEmulator
         {
             listBoxDebugInfo.Items.Clear();
             int idx = 0;
-            foreach (string s in urls)
+            if (isDebugMode)
             {
-                listBoxDebugInfo.Items.Add(s + debugInfo[idx++]);
+                foreach (string s in urls)
+                {
+                    listBoxDebugInfo.Items.Add(s + debugInfo[idx++]);
+                }
             }
             labelTotalReceived.Text = Convert.ToString(totalReceived);
             labelTotalSent.Text = Convert.ToString(totalSent);

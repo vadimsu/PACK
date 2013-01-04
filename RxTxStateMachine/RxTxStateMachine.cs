@@ -10,14 +10,15 @@ namespace RxTxStateMachine
     {
         PACK_DUMMY_STATE,
         PACK_HEADER_STATE,
-        PACK_BODY_STATE
+        PACK_BODY_STATE,
+        PACK_WHOLE_PACKET_STATE
     };
 
     public delegate void OnMsgReceived();
 
     public class FramingStateMachine
     {
-        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_NONE;
+        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
         protected const uint PackPreamble = 0xA57F5AF7;
 
         protected uint m_ByteCounter;
@@ -40,6 +41,12 @@ namespace RxTxStateMachine
             if ((m_State == (byte)PackTxRxState_e.PACK_BODY_STATE) &&
                 (m_Body != null) &&
                 (m_ByteCounter == m_Body.Length))
+            {
+                return true;
+            }
+            else if ((m_State == (byte)PackTxRxState_e.PACK_WHOLE_PACKET_STATE) &&
+                    (m_Body != null) &&
+                    (m_ByteCounter == (m_Header.Length + m_Body.Length)))
             {
                 return true;
             }
@@ -73,17 +80,27 @@ namespace RxTxStateMachine
             m_Header[3] = (byte)((PackPreamble >> 24) & 0xFF);
         }
 
+        void GoHeaderStateIfDummy()
+        {
+            if (m_State == (byte)PackTxRxState_e.PACK_DUMMY_STATE)
+            {
+                m_State = (byte)PackTxRxState_e.PACK_HEADER_STATE;
+            }
+        }
+
         public void SetLength(uint length)
         {
             m_Header[4] = (byte)(length & 0xFF);
             m_Header[5] = (byte)((length >> 8) & 0xFF);
             m_Header[6] = (byte)((length >> 16) & 0xFF);
             m_Header[7] = (byte)((length >> 24) & 0xFF);
+            GoHeaderStateIfDummy();
         }
 
         public void SetKind(byte kind)
         {
             m_Header[8] = kind;
+            GoHeaderStateIfDummy();
         }
 
         public byte[] GetBytes()
@@ -114,9 +131,48 @@ namespace RxTxStateMachine
                 throw new Exception("Excetion in GetBytes " + exc.Message + " " + exc.StackTrace);
             }
         }
+
+        public byte[] GetBytes(int limit)
+        {
+            try
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " GetBytes (limited) Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
+                //LogUtility.LogUtility.LogFile(Environment.StackTrace);
+                if (m_State == (byte)PackTxRxState_e.PACK_DUMMY_STATE)
+                {
+                    m_State = (byte)PackTxRxState_e.PACK_HEADER_STATE;
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Went header state", ModuleLogLevel);
+                }
+                if(m_State == (byte)PackTxRxState_e.PACK_HEADER_STATE)
+                {
+                    byte []buff = new byte[m_Header.Length+m_Body.Length];
+                    m_Header.CopyTo(buff,0);
+                    m_Body.CopyTo(buff,m_Header.Length);
+                    m_State = (byte)PackTxRxState_e.PACK_WHOLE_PACKET_STATE;
+                    return buff;
+                }
+                if (m_ByteCounter == m_Body.Length)
+                {
+                    return null;
+                }
+                return m_Body;
+            }
+            catch (Exception exc)
+            {
+                throw new Exception("Excetion in GetBytes " + exc.Message + " " + exc.StackTrace);
+            }
+        }
         public bool IsInBody()
         {
-            return (m_State == (byte)PackTxRxState_e.PACK_BODY_STATE);
+            return ((m_State == (byte)PackTxRxState_e.PACK_BODY_STATE)||(m_State == (byte)PackTxRxState_e.PACK_WHOLE_PACKET_STATE));
+        }
+        public bool IsWholeMessage()
+        {
+            return (m_State == (byte)PackTxRxState_e.PACK_WHOLE_PACKET_STATE);
+        }
+        public int GetHeaderLength()
+        {
+            return m_Header.Length;
         }
         public bool OnTxComplete(uint bytes_count)
         {
@@ -147,6 +203,13 @@ namespace RxTxStateMachine
                         {
                             // m_State = (byte)PackTxRxState_e.PACK_DUMMY_STATE;
                         }
+                        break;
+                    case (byte)PackTxRxState_e.PACK_WHOLE_PACKET_STATE:
+                        if (bytes_count != (m_Header.Length + m_Body.Length))
+                        {
+                            return false;
+                        }
+                        m_ByteCounter += bytes_count;
                         break;
                 }
                 return true;
@@ -215,12 +278,14 @@ namespace RxTxStateMachine
                                 CopyBytes(buff, m_Header, RealSize - bytes2process, (int)m_ByteCounter, bytes2process);
                                 m_ByteCounter += (uint)bytes2process;
                                 bytes2process = 0;
+                                LogUtility.LogUtility.LogFile("All bytes processed ", ModuleLogLevel);
                             }
                             else
                             {
                                 CopyBytes(buff, m_Header, RealSize - bytes2process, (int)m_ByteCounter, remaining_bytes);
                                 m_ByteCounter += (uint)remaining_bytes;
                                 bytes2process -= remaining_bytes;
+                                LogUtility.LogUtility.LogFile("After copying remain " + Convert.ToString(bytes2process), ModuleLogLevel);
                             }
 
                             if (m_ByteCounter == m_Header.Length)
@@ -229,10 +294,12 @@ namespace RxTxStateMachine
                                 preamble |= (uint)(m_Header[1] << 8);
                                 preamble |= (uint)(m_Header[2] << 16);
                                 preamble |= (uint)(m_Header[3] << 24);
+                                LogUtility.LogUtility.LogFile("Header received ", ModuleLogLevel);
                                 if (preamble != PackPreamble)
                                 {
                                     m_ByteCounter = 0;
                                     m_State = (byte)PackTxRxState_e.PACK_DUMMY_STATE;
+                                    LogUtility.LogUtility.LogFile("PREAMBLE MISMATCH!!!!!!! ", ModuleLogLevel);
                                     return;
                                 }
                                 m_State = (byte)PackTxRxState_e.PACK_BODY_STATE;
@@ -258,12 +325,14 @@ namespace RxTxStateMachine
                                 CopyBytes(buff, m_Body, RealSize - bytes2process, (int)m_ByteCounter, bytes2process);
                                 m_ByteCounter += (uint)bytes2process;
                                 bytes2process = 0;
+                                LogUtility.LogUtility.LogFile("All bytes copyied ", ModuleLogLevel);
                             }
                             else
                             {
                                 CopyBytes(buff, m_Body, RealSize - bytes2process, (int)m_ByteCounter, remaining_bytes);
                                 m_ByteCounter += (uint)remaining_bytes;
                                 bytes2process -= remaining_bytes;
+                                LogUtility.LogUtility.LogFile("After copying remain " + Convert.ToString(bytes2process), ModuleLogLevel);
                             }
                             if (m_ByteCounter == m_Body.Length)
                             {
