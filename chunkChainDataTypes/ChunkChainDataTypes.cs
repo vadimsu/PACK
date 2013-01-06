@@ -23,12 +23,6 @@ namespace ChunkChainDataTypes
         public static uint GetSize() { return (sizeof(long) + sizeof(byte)); }
     };
 
-    public struct ChunkMetaDataAndOffset
-    {
-        public uint offset;
-        public List<ChunkMetaData>chunkMetaData;
-        public static uint GetSize() { return ChunkMetaData.GetSize() + sizeof(uint); }
-    };
     public struct FileAndOffset
     {
         public long file;

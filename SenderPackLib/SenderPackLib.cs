@@ -13,35 +13,32 @@ using System.Threading;
 
 namespace SenderPackLib
 {
-    class PredMsgAndTimeStamp
-    {
-        public List<ChunkMetaDataAndOffset> predMsg;
-        public DateTime timeStamp;
-    };
     class LongestMatch
     {
         bool m_ChainNotFound;
-        uint m_longestChain;
+        uint m_longestChunkCount;
         uint m_longestChainLen;
         uint m_longestProcessedBytes;
         List<long> m_longestChunkList;
         uint m_longestChainSenderFirstChunkIdx;
         uint m_longestChainReceiverFirstChunkIdx;
-        PredMsgAndTimeStamp m_predMsg;
-        private void SetFields(PredMsgAndTimeStamp predMsg,uint longestChain,uint longestChainLen,uint longestProcessedBytes,List<long> longestChunkList,uint longestChainSenderFirstChunkIdx,uint longestChainReceiverFirstChunkIdx)
+        int m_Offset;
+        List<ChunkMetaData> m_predMsg;
+        private void SetFields(List<ChunkMetaData> predMsg,int offset,uint ChunkCount,uint ChainLen,uint ProcessedBytes,List<long> ChunkList,uint SenderFirstChunkIdx,uint ReceiverFirstChunkIdx)
         {
-            LogUtility.LogUtility.LogFile("Setting fields longestChainLen " + Convert.ToString(longestChainLen) + " longestProcessedBytes " + Convert.ToString(longestProcessedBytes) + " longestChain " + Convert.ToString(longestChain), LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+            LogUtility.LogUtility.LogFile("Setting fields offset " + Convert.ToString(offset) + " ChunkCount " + Convert.ToString(ChunkCount) + " ChainLen " + Convert.ToString(ChainLen) + " ProcessedBytes " + Convert.ToString(ProcessedBytes) + " Sender first " + Convert.ToString(SenderFirstChunkIdx) + " Receiver first " + Convert.ToString(ReceiverFirstChunkIdx), LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             m_predMsg = predMsg;
-            m_longestChain = longestChain;
-            m_longestChainLen = longestChainLen;
-            m_longestProcessedBytes = longestProcessedBytes;
-            m_longestChunkList = longestChunkList;
-            m_longestChainSenderFirstChunkIdx = longestChainSenderFirstChunkIdx;
-            m_longestChainReceiverFirstChunkIdx = longestChainReceiverFirstChunkIdx;
+            m_Offset = offset;
+            m_longestChunkCount = ChunkCount;
+            m_longestChainLen = ChainLen;
+            m_longestProcessedBytes = ProcessedBytes;
+            m_longestChunkList = ChunkList;
+            m_longestChainSenderFirstChunkIdx = SenderFirstChunkIdx;
+            m_longestChainReceiverFirstChunkIdx = ReceiverFirstChunkIdx;
         }
-        public void UpdateFields(PredMsgAndTimeStamp predMsg,uint longestChain, uint longestChainLen, uint longestProcessedBytes,List<long> longestChunkList, uint longestChainSenderFirstChunkIdx, uint longestChainReceiverFirstChunkIdx)
+        public void UpdateFields(List<ChunkMetaData> predMsg, int offset, uint ChunkCount,uint ChainLen, uint ProcessedBytes,List<long> ChunkList, uint SenderFirstChunkIdx, uint ReceiverFirstChunkIdx)
         {
-            SetFields(predMsg,longestChain, longestChainLen, longestProcessedBytes, longestChunkList, longestChainSenderFirstChunkIdx, longestChainReceiverFirstChunkIdx);
+            SetFields(predMsg, offset,ChunkCount,ChainLen, ProcessedBytes, ChunkList, SenderFirstChunkIdx, ReceiverFirstChunkIdx);
             m_ChainNotFound = false;
         }
         public bool IsLonger(uint matchLen)
@@ -65,30 +62,38 @@ namespace SenderPackLib
         {
             return m_longestChunkList;
         }
-        public uint GetLongestChainIdx()
-        {
-            return m_longestChain;
-        }
         public uint GetLongestChainLen()
         {
             return m_longestChainLen;
+        }
+        public uint GetLongestChunkCount()
+        {
+            return m_longestChunkCount;
         }
         public uint GetLongestProcessedBytes()
         {
             return m_longestProcessedBytes;
         }
-        public int GetReminder(int length)
+        public int GetRemainder(int length)
         {
-            return (length - (int)/*m_longestProcessedBytes*/m_longestChainLen);
+            return (length - (int)(m_longestChainLen + m_Offset));
         }
-        public PredMsgAndTimeStamp GetPredMsg()
+        public int GetPrecedingBytesCount()
+        {
+            return m_Offset;
+        }
+        public List<ChunkMetaData> GetPredMsg()
         {
             return m_predMsg;
         }
         public LongestMatch()
         {
             m_ChainNotFound = true;
-            SetFields(null,0, 0, 0, null, 0, 0);
+            SetFields(null,0,0, 0, 0, null, 0, 0);
+        }
+        public int GetOffset()
+        {
+            return m_Offset;
         }
     }
     class MatchStateMachine
@@ -98,28 +103,47 @@ namespace SenderPackLib
         StreamChunckingLib.PackChunking m_packChunking;
         EndPoint m_Id;
         byte[] m_data;
-        int m_offset;
-        int m_chainIdx;
+        int m_ProcessedBytes;
+        List<long> m_SenderChunkList;
         
-        public MatchStateMachine(EndPoint Id, int chainIdx,LongestMatch longestMatch, StreamChunckingLib.PackChunking packChunking, byte[] data, int offset)
+        List<List<ChunkMetaData>> m_PredMsg;
+        
+        public MatchStateMachine(EndPoint Id, LongestMatch longestMatch, StreamChunckingLib.PackChunking packChunking, byte[] data, List<List<ChunkMetaData>> predMsg)
         {
             m_LongestMatch = longestMatch;
             m_packChunking = packChunking;
             m_Id = Id;
             m_data = data;
-            m_offset = offset;
-            m_chainIdx = chainIdx;
+            m_PredMsg = predMsg;
+            m_SenderChunkList = new List<long>();
+
+            m_ProcessedBytes = m_packChunking.getChunks(m_SenderChunkList, m_data, 0, m_data.Length, true, false);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " processedBytes " + Convert.ToString(m_ProcessedBytes) + " chunk count " + Convert.ToString(m_SenderChunkList.Count), ModuleLogLevel);
         }
-        uint GetMatchLen(uint firstChunkIdx, uint matchLen, List<long> senderChunkList)
+        uint GetMatchLen(uint firstChunkIdx, uint matchLen)
         {
             uint len = 0;
             for (int idx = (int)firstChunkIdx; idx < (firstChunkIdx + matchLen); idx++)
             {
-                len += (uint)PackChunking.chunkToLen(senderChunkList[idx]);
+                len += (uint)PackChunking.chunkToLen(m_SenderChunkList[idx]);
             }
             return len;
         }
-        public void Run(PredMsgAndTimeStamp predMsg)
+        void OnEndOfMatch(List<ChunkMetaData> predMsg,uint matchLen,uint matchChunkCount,uint firstSenderIdx,uint firstReceiverIdx,int offset)
+        {
+            if (m_LongestMatch.IsLonger(matchLen))
+            {
+                /*matchLen*/
+                matchChunkCount = IsSha1Match(m_SenderChunkList, firstSenderIdx, predMsg, firstReceiverIdx, /*matchLen*/matchChunkCount, m_data, offset);
+                if (matchChunkCount > 0)
+                {
+                    matchLen = GetMatchLen(firstSenderIdx, matchChunkCount);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " chain longer " + Convert.ToString(m_LongestMatch.GetLongestChainLen()), ModuleLogLevel);
+                    m_LongestMatch.UpdateFields(predMsg, offset, matchChunkCount, matchLen,(uint)m_ProcessedBytes, m_SenderChunkList, firstSenderIdx, firstReceiverIdx);
+                }
+            }
+        }
+        void MatchChain(List<ChunkMetaData> predMsg)
         {
             try
             {
@@ -130,9 +154,8 @@ namespace SenderPackLib
                 int senderChunkIdx = 0;
                 int receiverChunkIdx = 0;
                 bool match = false;
-                List<long> senderChunkList = new List<long>();
-                int processedBytes = m_packChunking.getChunks(senderChunkList, m_data, (int)m_offset, m_data.Length, true, false);
-                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " offset " + Convert.ToString(m_offset) + " processedBytes " + Convert.ToString(processedBytes) + " chunk count " + Convert.ToString(senderChunkList.Count), ModuleLogLevel);
+                int offset = 0;
+                int savedOffset = 0;
 #if false
                 LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " processing " + Convert.ToString(receiverChunkList[m_chainIdx].chunkMetaData.Count) + " chunks ", ModuleLogLevel);
                 {
@@ -146,23 +169,24 @@ namespace SenderPackLib
                     }
                 }
 #endif
-                while ((senderChunkIdx < senderChunkList.Count) && (receiverChunkIdx < predMsg.predMsg[m_chainIdx].chunkMetaData.Count))
+                while ((senderChunkIdx < m_SenderChunkList.Count) && (receiverChunkIdx < predMsg.Count))
                 {
-                    byte senderHint = PackChunking.GetChunkHint(m_data, (uint)m_offset, (uint)PackChunking.chunkToLen(senderChunkList[senderChunkIdx]));
-                    long senderChunk = PackChunking.chunkCode(0, PackChunking.chunkToLen(senderChunkList[senderChunkIdx]));
+                    byte senderHint = PackChunking.GetChunkHint(m_data, (uint)offset, (uint)PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx]));
+                    long senderChunk = PackChunking.chunkCode(0, PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx]));
                     switch (match)
                     {
                         case false:
-                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " in non-match " + Convert.ToString(PackChunking.chunkToLen(senderChunkList[senderChunkIdx])), ModuleLogLevel);
-                            receiverChunkIdx = (int)FindFirstMatchingChunk(predMsg.predMsg[m_chainIdx].chunkMetaData, senderChunk, senderHint);
-                            if (receiverChunkIdx != predMsg.predMsg[m_chainIdx].chunkMetaData.Count)
+                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " in non-match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
+                            receiverChunkIdx = (int)FindFirstMatchingChunk(predMsg, senderChunk, senderHint);
+                            if (receiverChunkIdx != predMsg.Count)
                             {
-                                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " match " + Convert.ToString(PackChunking.chunkToLen(predMsg.predMsg[m_chainIdx].chunkMetaData[(int)receiverChunkIdx].chunk)), ModuleLogLevel);
+                                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " match " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)receiverChunkIdx].chunk)), ModuleLogLevel);
                                 match = true;
                                 firstReceiverIdx = (uint)receiverChunkIdx;
                                 firstSenderIdx = (uint)senderChunkIdx;
-                                matchLen = (uint)PackChunking.chunkToLen(senderChunkList[senderChunkIdx]);
+                                matchLen = (uint)PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx]);
                                 matchChunkCount = 1;
+                                savedOffset = offset;
                                 receiverChunkIdx++;
                             }
                             else
@@ -171,54 +195,42 @@ namespace SenderPackLib
                             }
                             break;
                         case true:
-                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "in match " + Convert.ToString(PackChunking.chunkToLen(senderChunkList[senderChunkIdx])), ModuleLogLevel);
-                            if ((senderChunk != PackChunking.chunkCode(0, PackChunking.chunkToLen(predMsg.predMsg[m_chainIdx].chunkMetaData[receiverChunkIdx].chunk))) ||
-                                (senderHint != predMsg.predMsg[m_chainIdx].chunkMetaData[receiverChunkIdx].hint))
+                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "in match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
+                            if ((senderChunk != PackChunking.chunkCode(0, PackChunking.chunkToLen(predMsg[receiverChunkIdx].chunk))) ||
+                                (senderHint != predMsg[receiverChunkIdx].hint))
                             {
                                 match = false;
                                 LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "stopped. matching sha1 ", ModuleLogLevel);
-                                if (m_LongestMatch.IsLonger(matchLen))
-                                {
-                                    /*matchLen*/
-                                    matchChunkCount = IsSha1Match(senderChunkList, firstSenderIdx, predMsg.predMsg[m_chainIdx].chunkMetaData, firstReceiverIdx, /*matchLen*/matchChunkCount, m_data, (int)predMsg.predMsg[m_chainIdx].offset);
-                                    if (matchChunkCount > 0)
-                                    {
-                                        matchLen = GetMatchLen(firstSenderIdx, matchChunkCount,senderChunkList);
-                                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " chain longer " + Convert.ToString(senderChunkIdx) + " " + Convert.ToString(m_LongestMatch.GetLongestChainLen()), ModuleLogLevel);
-                                        m_LongestMatch.UpdateFields(predMsg, (uint)m_chainIdx, matchLen, (uint)processedBytes, senderChunkList, firstSenderIdx, firstReceiverIdx);
-                                    }
-                                }
+                                OnEndOfMatch(predMsg, matchLen, matchChunkCount, firstSenderIdx, firstReceiverIdx, savedOffset);
                             }
                             else
                             {
-                                matchLen += (uint)PackChunking.chunkToLen(senderChunkList[senderChunkIdx]);
+                                matchLen += (uint)PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx]);
                                 matchChunkCount++;
                                 receiverChunkIdx++;
-                                if (senderChunkIdx == (senderChunkList.Count - 1))
+                                if (senderChunkIdx == (m_SenderChunkList.Count - 1))
                                 {
                                     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "stopped (end). matching sha1 ", ModuleLogLevel);
-                                    if (m_LongestMatch.IsLonger(matchLen))
-                                    {
-                                        /*matchLen*/
-                                        matchChunkCount = IsSha1Match(senderChunkList, firstSenderIdx, predMsg.predMsg[m_chainIdx].chunkMetaData, firstReceiverIdx, /*matchLen*/matchChunkCount, m_data, (int)predMsg.predMsg[m_chainIdx].offset);
-                                        if (matchChunkCount > 0)
-                                        {
-                                            matchLen = GetMatchLen(firstSenderIdx, matchChunkCount,senderChunkList);
-                                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " chain longer " + Convert.ToString(senderChunkIdx) + " " + Convert.ToString(m_LongestMatch.GetLongestChainLen()), ModuleLogLevel);
-                                            m_LongestMatch.UpdateFields(predMsg, (uint)m_chainIdx, matchLen, (uint)processedBytes, senderChunkList, firstSenderIdx, firstReceiverIdx);
-                                        }
-                                    }
+                                    OnEndOfMatch(predMsg, matchLen, matchChunkCount, firstSenderIdx, firstReceiverIdx, savedOffset);
                                 }
                             }
                             break;
                     }
-                    m_offset += (int)PackChunking.chunkToLen(senderChunkList[senderChunkIdx]);
+                    LogUtility.LogUtility.LogFile("Sender's offset " + Convert.ToString(offset), ModuleLogLevel);
+                    offset += (int)PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx]);
                     senderChunkIdx++;
                 }
             }
             catch (Exception exc)
             {
                 LogUtility.LogUtility.LogFile("EXCEPTION: " + exc.Message + " " + exc.StackTrace + " " + exc.InnerException, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+            }
+        }
+        public void Run()
+        {
+            for (uint chainIdx = 0; chainIdx < m_PredMsg.Count; chainIdx++)
+            {
+                MatchChain(m_PredMsg[(int)chainIdx]);
             }
         }
         uint FindFirstMatchingChunk(List<ChunkMetaData> chunksList, long chunk, byte hint)
@@ -261,11 +273,11 @@ namespace SenderPackLib
                 receiverFirstIdx++;
             }
 #else
-            senderChunkList = new List<long>();
-            m_packChunking.getChunks(senderChunkList, data, (int)offset, data.Length, true, true);
+            List<long>  newSenderChunkList = new List<long>();
+            m_packChunking.getChunks(newSenderChunkList, data, (int)0, data.Length, true, true);
             for (idx = 0; idx < matchLength; idx++)
             {
-                sha1 = PackChunking.chunkToSha1(senderChunkList[(int)senderFirstIdx]);
+                sha1 = PackChunking.chunkToSha1(newSenderChunkList[(int)senderFirstIdx]);
                 if (sha1 != PackChunking.chunkToSha1(receiverChunksList[(int)receiverFirstIdx].chunk))
                 {
                     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sha mismatch " + Convert.ToString(idx) + " " + Convert.ToString(senderFirstIdx), ModuleLogLevel);
@@ -449,22 +461,14 @@ namespace SenderPackLib
             }
         }
 #else
-        LinkedList<PredMsgAndTimeStamp> m_PredMsgList;
-        public void AddPredMsg(IPAddress ipAddress, List<ChunkMetaDataAndOffset> predMsg)
+        List<List<ChunkMetaData>> m_PredMsg;
+        public void AddPredMsg(IPAddress ipAddress, List<List<ChunkMetaData>> predMsg)
         {
-            PredMsgAndTimeStamp pmts = new PredMsgAndTimeStamp();
-            pmts.predMsg = predMsg;
-            pmts.timeStamp = DateTime.Now;
-            m_PredMsgList = new LinkedList<PredMsgAndTimeStamp>();
-            m_PredMsgList.AddFirst(pmts);
+            m_PredMsg = predMsg;
         }
-        LinkedList<PredMsgAndTimeStamp> GetPredMsg4IpAddress(IPAddress ipAddress)
+        List<List<ChunkMetaData>> GetPredMsg4IpAddress(IPAddress ipAddress)
         {
-            return m_PredMsgList;
-        }
-        void UpdateTimeStamp(PredMsgAndTimeStamp predMsgAndTimeStamp)
-        {
-            //m_PredMsgList = null;
+            return m_PredMsg;
         }
 #endif
         void InitInstance(byte[]data)
@@ -476,7 +480,7 @@ namespace SenderPackLib
                 PredMsgCacheTimeOutingThread.Start();
             }
 #else
-            m_PredMsgList = null;
+            m_PredMsg = null;
 #endif
             packChunking = new PackChunking(8);
             TotalDataReceived = 0;
@@ -531,25 +535,20 @@ namespace SenderPackLib
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " PreSaved " + Convert.ToString(TotalPreSaved) + " Saved " + Convert.ToString(TotalSavedData) + " PostSaved " + Convert.ToString(TotalPostSaved) + " Received from server " + Convert.ToString(TotalDataReceived) + " Total sent to client " + Convert.ToString(TotalDataSent) + " Sent raw " + Convert.ToString(TotalRawSent), ModuleLogLevel);
         }
 
-        void SendChunksData(List<long> senderChunkList, uint chunksData2Send,byte []data,int offset)
+        void SendChunksData(byte []data,int count)
         {
-            uint overall_msg_len = (uint)offset;
             int idx,offset_in_msg;
             byte[] msg;
 
-            for (idx = 0; idx < chunksData2Send; idx++)
-            {
-                overall_msg_len += (uint)PackChunking.chunkToLen(senderChunkList[idx]);
-            }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Sending pre-PredAck DATA " + Convert.ToString(overall_msg_len), ModuleLogLevel);
-            msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader(overall_msg_len, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset_in_msg);
-            for (idx = 0; idx < overall_msg_len; idx++)
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Sending pre-PredAck DATA " + Convert.ToString(count), ModuleLogLevel);
+            msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)count, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset_in_msg);
+            for (idx = 0; idx < count; idx++)
             {
                 msg[idx + offset_in_msg] = data[idx];
             }
             onMessageReadyToTx(onTxMessageParam, msg);
-            TotalDataSent += overall_msg_len;
-            TotalPreSaved += overall_msg_len;
+            TotalDataSent += (uint)count;
+            TotalPreSaved += (uint)count;
             DataMsgSent++;
         }
 
@@ -565,19 +564,13 @@ namespace SenderPackLib
             LogUtility.LogUtility.LogFile("AddData: " + Convert.ToString(data.Length) + " bytes received", ModuleLogLevel);
             
             LongestMatch longestMatch = new LongestMatch();
-            LinkedList<PredMsgAndTimeStamp> predMsgsAndTimeStamp = GetPredMsg4IpAddress(((IPEndPoint)Id).Address);
+            List<List<ChunkMetaData>> predMsgs = GetPredMsg4IpAddress(((IPEndPoint)Id).Address);
 
-            if (predMsgsAndTimeStamp != null)
+            if (predMsgs != null)
             {
-                foreach(PredMsgAndTimeStamp predMsgAndTimeStamp in predMsgsAndTimeStamp)
-                {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " AddData: process " + Convert.ToString(predMsgAndTimeStamp.predMsg.Count) + " chains total received " + Convert.ToString(TotalDataReceived) + " total sent " + Convert.ToString(TotalDataSent) + " total saved " + Convert.ToString(TotalSavedData) + " data len " + Convert.ToString(data.Length), ModuleLogLevel);
-                    for (int chainIdx = 0; chainIdx < predMsgAndTimeStamp.predMsg.Count; chainIdx++)
-                    {
-                        MatchStateMachine matchStateMachine = new MatchStateMachine(Id, chainIdx, longestMatch, packChunking, data, (int)predMsgAndTimeStamp.predMsg[chainIdx].offset);
-                        matchStateMachine.Run(predMsgAndTimeStamp);
-                    }
-                }
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " AddData: process " + Convert.ToString(predMsgs.Count) + " chains total received " + Convert.ToString(TotalDataReceived) + " total sent " + Convert.ToString(TotalDataSent) + " total saved " + Convert.ToString(TotalSavedData) + " data len " + Convert.ToString(data.Length), ModuleLogLevel);
+                MatchStateMachine matchStateMachine = new MatchStateMachine(Id, longestMatch, packChunking, data, predMsgs);
+                matchStateMachine.Run();
             }
             
             if (!longestMatch.IsMatchFound())
@@ -587,31 +580,36 @@ namespace SenderPackLib
                 Monitor.Exit(libMutex);
                 return;
             }
-            if (longestMatch.GetFirstSenderChunkIdx() > 0)
+            if (longestMatch.GetPrecedingBytesCount() > 0)
             {
-                SendChunksData(longestMatch.GetChunkList(), longestMatch.GetFirstSenderChunkIdx(), data, (int)longestMatch.GetPredMsg().predMsg[(int)longestMatch.GetLongestChainIdx()].offset);
+                SendChunksData(data, (int)longestMatch.GetPrecedingBytesCount());
             }
-            //offset = (int)predMsg[(int)longestMatch.GetLongestChainIdx()].offset;
-            //receiverChunkIdx = (int)longestMatch.GetFirstReceiverChunkIdx();
-            byte []buff = PackMsg.PackMsg.AllocateMsgAndBuildHeader(GetPredictionAckMessageSize((uint)longestMatch.GetLongestChainLen()), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_PRED_ACK_MSG_KIND, out offset);
-            EncodePredictionAckMessage(buff, offset, longestMatch.GetPredMsg().predMsg[(int)longestMatch.GetLongestChainIdx()], (uint)longestMatch.GetLongestChainLen(), longestMatch.GetFirstReceiverChunkIdx());
+            
+            byte []buff = PackMsg.PackMsg.AllocateMsgAndBuildHeader(GetPredictionAckMessageSize((uint)longestMatch.GetLongestChunkCount()), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_PRED_ACK_MSG_KIND, out offset);
+            EncodePredictionAckMessage(buff, offset, longestMatch.GetPredMsg(), (uint)longestMatch.GetLongestChunkCount(), longestMatch.GetFirstReceiverChunkIdx());
             onMessageReadyToTx(onTxMessageParam, buff);
             PredAckMsgSent++;
-            UpdateTimeStamp(longestMatch.GetPredMsg());
-            int remainder = longestMatch.GetReminder(data.Length);
+            int remainder = longestMatch.GetRemainder(data.Length);
+            int alreadySent = (int)longestMatch.GetPrecedingBytesCount() + (int)longestMatch.GetLongestChainLen();
+            if ((alreadySent + remainder) != data.Length)
+            {
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " something wrong: prec+chainLen+remainder " + Convert.ToString(longestMatch.GetPrecedingBytesCount()) + " " + Convert.ToString(longestMatch.GetLongestChainLen()) + " " + Convert.ToString(remainder) + " does not equal data.length " + Convert.ToString(data.Length), ModuleLogLevel);
+            }
+            
             if (remainder > 0)
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sending pos-PredAck data " + Convert.ToString(remainder), ModuleLogLevel);
                 msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)remainder, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
-                for (int i = (int)longestMatch.GetLongestProcessedBytes(); i < data.Length; i++)
+                for (int i = alreadySent; i < data.Length; i++)
                 {
-                    msg[(i - longestMatch.GetLongestProcessedBytes()) + offset] = data[i];
+                    msg[(i - alreadySent) + offset] = data[i];
                 }
                 onMessageReadyToTx(onTxMessageParam, msg);
                 TotalDataSent += (uint)remainder;
                 TotalPostSaved += (uint)remainder;
                 DataMsgSent++;
             }
+            longestMatch.GetPredMsg().RemoveRange((int)longestMatch.GetFirstReceiverChunkIdx(), (int)longestMatch.GetLongestChunkCount());
 #if false
             longestMatch.GetPredMsg()[(int)longestMatch.GetLongestChainIdx()].chunkMetaData.RemoveRange((int)longestMatch.GetFirstReceiverChunkIdx(), (int)longestMatch.GetLongestChainLen());
             longestMatch.GetPredMsg()[(int)longestMatch.GetLongestChainIdx()].chunkMetaData.RemoveRange(0, (int)longestMatch.GetFirstReceiverChunkIdx());
@@ -641,11 +639,11 @@ namespace SenderPackLib
             base.SetCallback((int)PackMsg.PackMsg.MsgKind_e.PACK_PRED_MSG_KIND, onPredMsg);
             InitInstance(null);
         }    
-        List<ChunkMetaDataAndOffset> DecodePredictionMessage(byte[] buffer, int offset, out uint decodedOffsetInStream)
+        List<List<ChunkMetaData>> DecodePredictionMessage(byte[] buffer, int offset, out uint decodedOffsetInStream)
         {
             uint buffer_idx = (uint)offset;
             uint chainsListSize;
-            List<ChunkMetaDataAndOffset> chainsList;
+            List<List<ChunkMetaData>> chainsList;
 
             buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(buffer, buffer_idx, out decodedOffsetInStream);
@@ -653,25 +651,24 @@ namespace SenderPackLib
             buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(buffer, buffer_idx, out chainsListSize);
 
-            chainsList = new List<ChunkMetaDataAndOffset>((int)chainsListSize);
+            chainsList = new  List<List<ChunkMetaData>>((int)chainsListSize);
 
             for (int chain_idx = 0; chain_idx < chainsListSize;chain_idx++ )
             {
-                ChunkMetaDataAndOffset chunkMetaDataAndId = new ChunkMetaDataAndOffset();
                 uint chunkListSize;
                 
                 buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(buffer, buffer_idx, out chunkListSize);
-                chunkMetaDataAndId.chunkMetaData = new List<ChunkMetaData>((int)chunkListSize);
+                List<ChunkMetaData> chunkMetaDataList = new List<ChunkMetaData>((int)chunkListSize);
                 for (uint idx = 0; idx < chunkListSize; idx++)
                 {
                     ChunkMetaData chunkMetaData = new ChunkMetaData();
                     chunkMetaData.hint = buffer[buffer_idx++];
                     buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Long(buffer, buffer_idx, out chunkMetaData.chunk);
-                    chunkMetaDataAndId.chunkMetaData.Add(chunkMetaData);
+                    chunkMetaDataList.Add(chunkMetaData);
                 }
-                chainsList.Add(chunkMetaDataAndId);
+                chainsList.Add(chunkMetaDataList);
             }
             return chainsList;
         }
@@ -679,7 +676,7 @@ namespace SenderPackLib
         {
             return (sizeof(uint) + sizeof(uint) /*+ sizeof(uint)*/ + (uint)chunksCount * ChunkMetaData.GetSize());
         }
-        void EncodePredictionAckMessage(byte[] buffer, int offset, ChunkMetaDataAndOffset chunkMetaDataAndId,uint chunksCount, uint firstChunk)
+        void EncodePredictionAckMessage(byte[] buffer, int offset, List<ChunkMetaData> chunkMetaDataList,uint chunksCount, uint firstChunk)
         {
             uint buffer_idx = (uint)offset;
             uint chunkCounter = 0;
@@ -687,8 +684,8 @@ namespace SenderPackLib
 
             buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Uint2ByteArray(buffer, buffer_idx, chunksCount);
-            
-            foreach (ChunkMetaData chunkMetaData in chunkMetaDataAndId.chunkMetaData)
+
+            foreach (ChunkMetaData chunkMetaData in chunkMetaDataList)
             {
                 if (chunkCounter >= firstChunk)
                 {
@@ -709,20 +706,20 @@ namespace SenderPackLib
         
         byte []ProcessPredMsg(byte []packet,int offset,byte Flags,int room_space)
         {
-            List<ChunkMetaDataAndOffset> chunkMetaDataAndIdList;
+            List<List<ChunkMetaData>> chunkMetaDataList;
             uint decodedOffsetInStream;
             Monitor.Enter(libMutex);
             uint offset_in_stream = TotalDataSent + TotalSavedData;
             PredMsgReceived++;
             LogUtility.LogUtility.LogFile("PRED Message", ModuleLogLevel);
-            chunkMetaDataAndIdList = DecodePredictionMessage(packet, offset, out decodedOffsetInStream);
+            chunkMetaDataList = DecodePredictionMessage(packet, offset, out decodedOffsetInStream);
             LogUtility.LogUtility.LogFile("chainOffset " + Convert.ToString(decodedOffsetInStream) + " TotalSent " + Convert.ToString(TotalDataSent) + " TotalSaved " + Convert.ToString(TotalSavedData), ModuleLogLevel);
-            if (chunkMetaDataAndIdList == null)
+            if (chunkMetaDataList == null)
             {
                 Monitor.Exit(libMutex);
                 return null;
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " processing " + Convert.ToString(chunkMetaDataAndIdList.Count) + " chains, offset " + Convert.ToString(decodedOffsetInStream) + " offset in stream " + Convert.ToString(offset_in_stream), ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " processing " + Convert.ToString(chunkMetaDataList.Count) + " chains, offset " + Convert.ToString(decodedOffsetInStream) + " offset in stream " + Convert.ToString(offset_in_stream), ModuleLogLevel);
 #if false            
             for (int i = 0; i < chunkMetaDataAndIdList.Count;i++)
             {
@@ -758,7 +755,7 @@ namespace SenderPackLib
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " leavingProcessPredMsg", ModuleLogLevel);
             predMsg = newChunkMetaDataAndIdList;
 #else
-            AddPredMsg(((IPEndPoint)Id).Address, chunkMetaDataAndIdList);
+            AddPredMsg(((IPEndPoint)Id).Address, chunkMetaDataList);
 #endif
             Monitor.Exit(libMutex);
             return null;
