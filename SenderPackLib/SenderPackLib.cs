@@ -105,7 +105,7 @@ namespace SenderPackLib
         byte[] m_data;
         int m_ProcessedBytes;
         List<long> m_SenderChunkList;
-        
+        List<long> m_SenderChunkListWithSha1;        
         List<List<ChunkMetaData>> m_PredMsg;
         
         public MatchStateMachine(EndPoint Id, LongestMatch longestMatch, StreamChunckingLib.PackChunking packChunking, byte[] data, List<List<ChunkMetaData>> predMsg)
@@ -118,6 +118,8 @@ namespace SenderPackLib
             m_SenderChunkList = new List<long>();
 
             m_ProcessedBytes = m_packChunking.getChunks(m_SenderChunkList, m_data, 0, m_data.Length, true, false);
+            m_SenderChunkListWithSha1 = new List<long>();
+            m_packChunking.getChunks(m_SenderChunkListWithSha1, m_data, (int)0, m_data.Length, true, true);
             LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " processedBytes " + Convert.ToString(m_ProcessedBytes) + " chunk count " + Convert.ToString(m_SenderChunkList.Count), ModuleLogLevel);
         }
         uint GetMatchLen(uint firstChunkIdx, uint matchLen)
@@ -134,7 +136,7 @@ namespace SenderPackLib
             if (m_LongestMatch.IsLonger(matchLen))
             {
                 /*matchLen*/
-                matchChunkCount = IsSha1Match(m_SenderChunkList, firstSenderIdx, predMsg, firstReceiverIdx, /*matchLen*/matchChunkCount, m_data, offset);
+                matchChunkCount = IsSha1Match(firstSenderIdx, predMsg, firstReceiverIdx, /*matchLen*/matchChunkCount);
                 if (matchChunkCount > 0)
                 {
                     matchLen = GetMatchLen(firstSenderIdx, matchChunkCount);
@@ -202,6 +204,10 @@ namespace SenderPackLib
                                 match = false;
                                 LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "stopped. matching sha1 ", ModuleLogLevel);
                                 OnEndOfMatch(predMsg, matchLen, matchChunkCount, firstSenderIdx, firstReceiverIdx, savedOffset);
+                                if (matchLen >= (m_data.Length / 3))
+                                {
+                                    return;
+                                }
                             }
                             else
                             {
@@ -212,6 +218,10 @@ namespace SenderPackLib
                                 {
                                     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "stopped (end). matching sha1 ", ModuleLogLevel);
                                     OnEndOfMatch(predMsg, matchLen, matchChunkCount, firstSenderIdx, firstReceiverIdx, savedOffset);
+                                    if (matchLen >= (m_data.Length / 3))
+                                    {
+                                        return;
+                                    }
                                 }
                             }
                             break;
@@ -249,7 +259,7 @@ namespace SenderPackLib
             return idx;
         }
 
-        uint IsSha1Match(List<long> senderChunkList, uint senderFirstIdx, List<ChunkMetaData> receiverChunksList, uint receiverFirstIdx, uint matchLength, byte[] data, int offset)
+        uint IsSha1Match(uint senderFirstIdx, List<ChunkMetaData> receiverChunksList, uint receiverFirstIdx, uint matchLength)
         {
             long sha1;
             uint idx;
@@ -273,11 +283,9 @@ namespace SenderPackLib
                 receiverFirstIdx++;
             }
 #else
-            List<long>  newSenderChunkList = new List<long>();
-            m_packChunking.getChunks(newSenderChunkList, data, (int)0, data.Length, true, true);
             for (idx = 0; idx < matchLength; idx++)
             {
-                sha1 = PackChunking.chunkToSha1(newSenderChunkList[(int)senderFirstIdx]);
+                sha1 = PackChunking.chunkToSha1(m_SenderChunkListWithSha1[(int)senderFirstIdx]);
                 if (sha1 != PackChunking.chunkToSha1(receiverChunksList[(int)receiverFirstIdx].chunk))
                 {
                     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sha mismatch " + Convert.ToString(idx) + " " + Convert.ToString(senderFirstIdx), ModuleLogLevel);

@@ -213,7 +213,18 @@ namespace ProxyLib
             }
             try
             {
-                IPEndPoint DestinationEndPoint = new IPEndPoint(Dns.GetHostEntry(Host).AddressList[0], Port);
+                IPAddress destIp;
+                IPEndPoint DestinationEndPoint;
+                if (!IPAddress.TryParse(Host, out destIp))
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " trying to retrieve IP for " + Host, LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                    DestinationEndPoint = new IPEndPoint(Dns.GetHostEntry(Host).AddressList[0], Port);
+                }
+                else
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " host name is the IP address " + Convert.ToString(destIp), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                    DestinationEndPoint = new IPEndPoint(destIp, Port);
+                }
                 destinationSideSocket = new Socket(DestinationEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 //destinationSideSocket.LingerState.Enabled = true;
                 //destinationSideSocket.LingerState.LingerTime = 5000;
