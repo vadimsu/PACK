@@ -18,7 +18,15 @@ namespace PackSenderProxyEmulator
     public partial class Form1 : Form
     {
         public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
-        
+        NotifyIcon m_NotifyIcon;
+        ContextMenu m_ContextMenu;
+        ulong totalReceived;
+        ulong totalSent;
+        ulong totalSaved;
+        double savedPercentage;
+        delegate void UpdateStatisticControlsCbk(object []res);
+        UpdateStatisticControlsCbk m_UpdateStatisticControls;
+        object m_StatisticsLock;
         public Form1()
         {
             InitializeComponent();
@@ -51,8 +59,81 @@ namespace PackSenderProxyEmulator
                 ProxyType = 0;
             }
             statistics1.DebugMode = false/*true*/;
+            m_ContextMenu = new ContextMenu();
+            MenuItem []logLevelSubItems = new MenuItem[5];
+            logLevelSubItems[0] = new MenuItem("None",OnSetLogLevelNone);
+            logLevelSubItems[1] = new MenuItem("Medium",OnSetLogLevelMedium);
+            logLevelSubItems[2] = new MenuItem("High",OnSetLogLevelHigh);
+            logLevelSubItems[3] = new MenuItem("High2",OnSetLogLevelHigh2);
+            logLevelSubItems[4] = new MenuItem("High3",OnSetLogLevelHigh3);
+            MenuItem menuItem = new MenuItem("Log level", logLevelSubItems);
+            m_ContextMenu.MenuItems.Add(menuItem);
+            MenuItem[] modeSubItems = new MenuItem[4];
+            modeSubItems[0] = new MenuItem("Raw", OnSetModeRaw);
+            modeSubItems[1] = new MenuItem("Http", OnSetModeHttp);
+            modeSubItems[2] = new MenuItem("Pack raw", OnSetModePackRaw);
+            modeSubItems[3] = new MenuItem("Pack Http", OnSetModePackHttp);
+            menuItem = new MenuItem("Mode", modeSubItems);
+            m_ContextMenu.MenuItems.Add(menuItem);
+            m_ContextMenu.MenuItems.Add("Start", buttonStart_Click);
+            m_ContextMenu.MenuItems.Add("Stop", buttonStop_Click);
+            m_ContextMenu.MenuItems.Add("Reset statitics", ResetStatistics);
+            m_NotifyIcon = new NotifyIcon();
+            m_NotifyIcon.Text = "Sender side proxy";
+            m_NotifyIcon.ContextMenu = m_ContextMenu;
+            m_NotifyIcon.Icon = new System.Drawing.Icon("Wi-Fi.ico");
+            m_NotifyIcon.Visible = true;
+            Visible = false;
+            ShowInTaskbar = false;
+            totalReceived = 0;
+            totalSent = 0;
+            totalSaved = 0;
+            savedPercentage = 0;
+            m_UpdateStatisticControls = new UpdateStatisticControlsCbk(ProcessStatistics);
+            m_StatisticsLock = new object();
+            ProxyType = 2;
+            LogUtility.LogUtility.SetSilent(false);
         }
-
+        void OnSetLogLevelNone(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(true);
+        }
+        void OnSetLogLevelMedium(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+        }
+        void OnSetLogLevelHigh(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_HIGH);
+        }
+        void OnSetLogLevelHigh2(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+        }
+        void OnSetLogLevelHigh3(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+        }
+        void OnSetModeRaw(object sender, EventArgs e)
+        {
+            ProxyType = 0;
+        }
+        void OnSetModeHttp(object sender, EventArgs e)
+        {
+            ProxyType = 1;
+        }
+        void OnSetModePackRaw(object sender, EventArgs e)
+        {
+            ProxyType = 3;
+        }
+        void OnSetModePackHttp(object sender, EventArgs e)
+        {
+            ProxyType = 2;
+        }
         void radioButtonLogHigh2_Click(object sender, EventArgs e)
         {
             AdjustLogRadioButtons(radioButtonLogHigh2);
@@ -252,10 +333,39 @@ namespace PackSenderProxyEmulator
         {
             //AdjustLogRadioButtons();
         }
-        
+        public void ProcessStatistics(object[] arg)
+        {
+            object[] res = (object [])arg;
+            Monitor.Enter(m_StatisticsLock);
+            totalReceived += (uint)res[1];
+            totalSent += (uint)res[2];
+            totalSaved += (uint)res[3];
+            if (totalSent > 0)
+            {
+                savedPercentage = (double)totalSaved / (double)totalSent;
+            }
+            //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
+            m_NotifyIcon.BalloonTipText = "Total: saved " + Convert.ToString(totalSaved) + " " + Convert.ToString(savedPercentage*100) + "% Saved " + Convert.ToString(res[3]);
+            m_NotifyIcon.ShowBalloonTip(1000);
+            Monitor.Exit(m_StatisticsLock);
+        }
+
+        void ResetStatistics(object sender, EventArgs e)
+        {
+            Monitor.Enter(m_StatisticsLock);
+            totalReceived = 0;
+            totalSent = 0;
+            totalSaved = 0;
+            savedPercentage = 0;
+            //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
+            Monitor.Exit(m_StatisticsLock);
+        }
         void OnGotResults(object results)
         {
-            statistics1.ProcessStatistics(results);
+         //   statistics1.ProcessStatistics(results);
+            object[] arg = new object[1];
+            arg[0] = results;
+            Invoke(m_UpdateStatisticControls,arg);
         }
 
         private void buttonRefreshStatistics_Click(object sender, EventArgs e)
@@ -266,6 +376,16 @@ namespace PackSenderProxyEmulator
                 statisticsForm.ProcessStatistics(l.GetResults());
                 statisticsForm.Show();
             }
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            this.Shown += new EventHandler(Form1_Shown);
+        }
+
+        void Form1_Shown(object sender, EventArgs e)
+        {
+            Hide();
         }
     }
 }

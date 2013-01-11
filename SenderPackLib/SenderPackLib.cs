@@ -206,7 +206,7 @@ namespace SenderPackLib
                                 OnEndOfMatch(predMsg, matchLen, matchChunkCount, firstSenderIdx, firstReceiverIdx, savedOffset);
                                 if (matchLen >= (m_data.Length / 3))
                                 {
-                                    return;
+                                    //return;
                                 }
                             }
                             else
@@ -220,7 +220,7 @@ namespace SenderPackLib
                                     OnEndOfMatch(predMsg, matchLen, matchChunkCount, firstSenderIdx, firstReceiverIdx, savedOffset);
                                     if (matchLen >= (m_data.Length / 3))
                                     {
-                                        return;
+                                        //return;
                                     }
                                 }
                             }

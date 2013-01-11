@@ -18,7 +18,11 @@ namespace ProxyLib
         public delegate void OnGotResultsCbk(object o);
         OnGotResultsCbk onGotResults;
         protected object listLock;
+#if true
         AsyncCallback m_OnAccept;
+#else
+        SocketAsyncEventArgs m_AcceptArgs;
+#endif
 
         public static void InitGlobalObjects()
         {
@@ -35,8 +39,14 @@ namespace ProxyLib
             remoteEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 7777);
             onGotResults = null;
             listLock = new object();
+#if true
             m_OnAccept = new AsyncCallback(OnAccept);
+#else
+            m_AcceptArgs = new SocketAsyncEventArgs();
+            m_AcceptArgs.Completed += new EventHandler<SocketAsyncEventArgs>(m_AcceptArgs_Completed);
+#endif
         }
+
         public void SetRemoteEndpoint(IPEndPoint ipEndPoint)
         {
             remoteEndpoint = ipEndPoint;
@@ -45,6 +55,7 @@ namespace ProxyLib
         {
             onGotResults = cbk;
         }
+#if true
         public virtual void OnAccept(IAsyncResult ar)
         {
             Socket newClientSocket = socket.EndAccept(ar);
@@ -76,8 +87,47 @@ namespace ProxyLib
                 serverSideProxy.SetRemoteEndpoint(remoteEndpoint);
                 serverSideProxy.Start();
             }
-            socket.BeginAccept(m_OnAccept, null);
+            IAsyncResult ar2 = socket.BeginAccept(m_OnAccept, null);
+            if (ar2.CompletedSynchronously)
+            {
+                OnAccept(ar2);
+            }
         }
+#else
+        protected virtual void m_AcceptArgs_Completed(object sender, SocketAsyncEventArgs e)
+        {
+            Proxy serverSideProxy = null;
+            Socket newClientSocket = m_AcceptArgs.AcceptSocket;
+            switch (ProxyType)
+            {
+                case (byte)ProxyLibTypes.ServerSideProxyTypes.SERVER_SIDE_PROXY_RAW:
+                    serverSideProxy = new RawServerSideProxy(newClientSocket);
+                    break;
+                case (byte)ProxyLibTypes.ServerSideProxyTypes.SERVER_SIDE_PROXY_HTTP:
+                    serverSideProxy = new HttpServerSideProxy(newClientSocket);
+                    break;
+                case (byte)ProxyLibTypes.ServerSideProxyTypes.SERVER_SIDE_PROXY_PACK_HTTP:
+                    serverSideProxy = new PackHttpServerSide(newClientSocket);
+                    break;
+                case (byte)ProxyLibTypes.ServerSideProxyTypes.SERVER_SIDE_PROXY_PACK_RAW:
+                    serverSideProxy = new PackRawServerSide(newClientSocket);
+                    break;
+            }
+            if (serverSideProxy != null)
+            {
+                Proxy.OnGotResults cbk = new Proxy.OnGotResults(OnGotResults);
+                serverSideProxy.SetOnGotResults(cbk);
+                Proxy.OnDisposed ondisp = new Proxy.OnDisposed(OnDisposed);
+                serverSideProxy.SetOnDisposed(ondisp);
+                /*Monitor.Enter(listLock);
+                clientsList.Add(serverSideProxy);
+                Monitor.Exit(listLock);*/
+                serverSideProxy.SetRemoteEndpoint(remoteEndpoint);
+                serverSideProxy.Start();
+            }
+            socket.AcceptAsync(m_AcceptArgs);
+        }
+#endif
         public virtual ArrayList GetResults()
         {
             ArrayList resList = new ArrayList();
@@ -104,8 +154,16 @@ namespace ProxyLib
         }
         public virtual void Start()
         {
-            socket.Listen(1);
-            socket.BeginAccept(m_OnAccept, null);
+            socket.Listen(100);
+#if true
+            IAsyncResult ar = socket.BeginAccept(m_OnAccept, null);
+            if (ar.CompletedSynchronously)
+            {
+                OnAccept(ar);
+            }
+#else
+            socket.AcceptAsync(m_AcceptArgs);
+#endif
         }
 
         public void Stop()

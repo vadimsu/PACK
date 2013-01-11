@@ -302,6 +302,7 @@ end_server_rx:
         }
         protected override void NonProprietarySegmentReceive()
         {
+            bool IsRestartRequired = false;
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentReceive", ModuleLogLevel);
             EnterNonProprietarySegmentRxCriticalArea();
             try
@@ -320,17 +321,41 @@ end_server_rx:
                     LeaveNonProprietarySegmentRxCriticalArea();
                     return;
                 }
-                NonProprietarySegmentRxInProgress = true;
                 m_OnNonProprietaryReceivedCbk.SetBuffer(NonProprietarySegmentRxBuf, 0, NonProprietarySegmentRxBuf.Length);
-                destinationSideSocket.ReceiveAsync(m_OnNonProprietaryReceivedCbk);
+                if (!destinationSideSocket.ReceiveAsync(m_OnNonProprietaryReceivedCbk))
+                {
+                    int Received = m_OnNonProprietaryReceivedCbk.BytesTransferred;
+                    if (Received <= 0)
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received(sync) (non-proprietary segment) ERROR ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                        goto end_server_rx;
+                    }
+                    ReceivedServer += (uint)Received;
+                    ReceivedMsgs++;
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received(sync) (non-proprietary segment) " + Convert.ToString(Received) + " overall " + Convert.ToString(ReceivedServer), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+
+                    byte[] buff = new byte[Received];
+                    CopyBytes(NonProprietarySegmentRxBuf, buff, Received);
+                    ProcessDownStreamData(buff);
+                    IsRestartRequired = true;
+                }
+                else
+                {
+                    NonProprietarySegmentRxInProgress = true;
+                }
             }
             catch (Exception exc)
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
+end_server_rx:
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentReceive", ModuleLogLevel);
             LeaveNonProprietarySegmentRxCriticalArea();
             CheckConnectionAndShutDownIfGone();
+            if (IsRestartRequired)
+            {
+                ReStartAllOperations(false);
+            }
         }
         void _NonProprietarySegmentTransmit(byte []data)
         {
@@ -512,6 +537,7 @@ end_server_rx:
         }
         protected override void ProprietarySegmentReceive()
         {
+            bool IsRestartRequired = false;
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentReceive", ModuleLogLevel);
             EnterProprietarySegmentRxCriticalArea();
             try
@@ -523,9 +549,25 @@ end_server_rx:
                     LeaveProprietarySegmentRxCriticalArea();
                     return;
                 }
-                ProprietarySegmentRxInProgress = true;
                 m_OnProprietaryReceivedCbk.SetBuffer(ProprietarySementRxBuf, 0, ProprietarySementRxBuf.Length);
-                clientSideSocket.ReceiveAsync(m_OnProprietaryReceivedCbk);
+                if (!clientSideSocket.ReceiveAsync(m_OnProprietaryReceivedCbk))
+                {
+                    int Received = m_OnProprietaryReceivedCbk.BytesTransferred;
+                    if (Received <= 0)
+                    {
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " ProprietarySegmentReceived (sync) ERROR", ModuleLogLevel);
+                        LeaveProprietarySegmentRxCriticalArea();
+                        return;
+                    }
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " ProprietarySegmentReceived (sync) " + Convert.ToString(Received), ModuleLogLevel);
+                    ReceivedClient += (uint)Received;
+                    rxStateMachine.OnRxComplete(m_OnProprietaryReceivedCbk.Buffer, Received);
+                    IsRestartRequired = true;
+                }
+                else
+                {
+                    ProprietarySegmentRxInProgress = true;
+                }
             }
             catch (Exception exc)
             {
@@ -533,6 +575,10 @@ end_server_rx:
             }
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentReceive", ModuleLogLevel);
             LeaveProprietarySegmentRxCriticalArea();
+            if (IsRestartRequired)
+            {
+                ReStartAllOperations(false);
+            }
         }
         protected override bool ClientTxInProgress()
         {

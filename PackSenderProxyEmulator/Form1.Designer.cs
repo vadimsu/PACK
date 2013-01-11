@@ -253,6 +253,7 @@
             this.Controls.Add(this.buttonStart);
             this.Name = "Form1";
             this.Text = "Sender Proxy Emulator";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

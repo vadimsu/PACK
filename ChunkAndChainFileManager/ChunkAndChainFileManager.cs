@@ -93,10 +93,20 @@ namespace ChunkAndChainFileManager
         public static int CompareChains(List<long> chunkList, int successorsChunkListIdx, long[] chunkIds, int chunk_idx)
         {
             uint idx = (uint)chunk_idx;
-            /* if successors list is longer than found chain, the chain does not match */
+            /* if successors list is longer than found chain, 
+             * test existing chunks for match. If existing chunks differ, the chain does not match */
             if ((chunkList.Count - successorsChunkListIdx) > (chunkIds.Length - chunk_idx))
             {
-                return -1;
+                while (idx < chunkIds.Length)
+                {
+                    if (chunkList[successorsChunkListIdx] != chunkIds[idx])
+                    {
+                        return -1;
+                    }
+                    successorsChunkListIdx++;
+                    idx++;
+                }
+                return 0;
             }
             /* for each chunk in successors list check if equals */
             while (successorsChunkListIdx < chunkList.Count)
@@ -319,7 +329,7 @@ namespace ChunkAndChainFileManager
                 switch (foundChainLength)
                 {
                     case -1: /* different */
-                        chainId4Lookup = 0;
+                        //Vadim 10/01/13 chainId4Lookup = 0;
                         DifferentChains++;
                         break;
                     case 0:/* match but no longer */

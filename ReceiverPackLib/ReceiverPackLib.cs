@@ -300,6 +300,8 @@ namespace ReceiverPackLib
 
         uint ReceiverOnDataMsg(byte[] packet, int packet_offset, byte flag, out List<ChunkListAndChainId> chainChunkList, out uint chainOffset)
         {
+            onDataReceived(packet, packet_offset, packet.Length - packet_offset);
+
             List<long> chunkList = new List<long>();
             Monitor.Enter(libMutex);
             /* process the stream (+reminder) to get chunks */
@@ -351,7 +353,7 @@ namespace ReceiverPackLib
                 Chains2Save chain2Save = new Chains2Save(chunkList, firstNonMatchingChunk, lastNonMatchingChunk, packet, firstNonMatchingChunkOffset,chunkAndChainFileManager);
                 AddChain2Save(chain2Save);
             }
-            onDataReceived(packet, packet_offset, packet.Length - packet_offset);
+            //Vadim 10/01/13 onDataReceived(packet, packet_offset, packet.Length - packet_offset);
             chainOffset = (uint)(CurrentOffset + processed_bytes);
             CurrentOffset += (uint)(packet.Length - packet_offset);
             if (chainChunkList.Count == 0)

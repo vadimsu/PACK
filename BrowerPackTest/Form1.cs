@@ -13,7 +13,8 @@ namespace BrowerPackTest
 {
     public partial class Form1 : Form
     {
-        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
+        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_NONE;
+        System.Timers.Timer m_ReloadTimer;
         public Form1()
         {
             InitializeComponent();
@@ -34,6 +35,35 @@ namespace BrowerPackTest
             webBrowser1.Navigated += new WebBrowserNavigatedEventHandler(webBrowser1_Navigated);
             webBrowser1.Navigating += new WebBrowserNavigatingEventHandler(webBrowser1_Navigating);
             webBrowser1.ProgressChanged += new WebBrowserProgressChangedEventHandler(webBrowser1_ProgressChanged);
+            m_ReloadTimer = new System.Timers.Timer(30000);
+            m_ReloadTimer.Elapsed += new System.Timers.ElapsedEventHandler(m_ReloadTimer_Elapsed);
+            this.SetDesktopLocation(0,0);
+            this.Height = Screen.PrimaryScreen.WorkingArea.Height;
+            this.Width = Screen.PrimaryScreen.WorkingArea.Width;
+            textBox1.Top = 0;
+            textBox1.Left = 0;
+            textBox1.Width = (this.Width / 4) * 3;
+            textBox1.Height = this.Height / 20;
+            buttonGo.Left = textBox1.Right;
+            buttonGo.Top = textBox1.Top;
+            buttonGo.Width = (this.Width / 8);
+            buttonGo.Height = textBox1.Height;
+            buttonDump.Left = buttonGo.Right;
+            buttonDump.Top = textBox1.Top;
+            buttonDump.Width = buttonGo.Width;
+            buttonDump.Height = buttonGo.Height;
+            webBrowser1.Top = textBox1.Bottom;
+            webBrowser1.Left = 0;
+            webBrowser1.Width = this.Width;
+            webBrowser1.Height = this.Height - textBox1.Height;
+            m_ReloadTimer.Start();
+            HttpWebRequest.DefaultWebProxy = new WebProxy(GetLocalInternalIP().ToString(), 6666);
+        }
+
+        void m_ReloadTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            GoToAddress();
+            //m_ReloadTimer.Stop();
         }
 
         void webBrowser1_ProgressChanged(object sender, WebBrowserProgressChangedEventArgs e)
@@ -64,23 +94,42 @@ namespace BrowerPackTest
         void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
         {
             LogUtility.LogUtility.LogFile(" doc completed " + e.ToString() + " " + e.Url.OriginalString, ModuleLogLevel);
+            if (e.Url.OriginalString == textBox1.Text)
+            {
+                GoToAddress();
+            }
         }
-
-        private void buttonGo_Click(object sender, EventArgs e)
+        void GoToAddress()
         {
             try
             {
+#if false
                 HttpWebRequest httpWebReq = (HttpWebRequest)HttpWebRequest.Create(textBox1.Text);
                 HttpWebRequest.DefaultWebProxy = new WebProxy(GetLocalInternalIP().ToString(), 6666);
                 HttpWebResponse webResponse = (HttpWebResponse)httpWebReq.GetResponse();
-                textBox1.Text = "Got response";
+                //textBox1.Text = "Got response";
                 webBrowser1.DocumentStream = webResponse.GetResponseStream();
                 LogUtility.LogUtility.LogFile(webBrowser1.DocumentText, LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+#else
+                try
+                {
+                    Uri uri = new Uri(textBox1.Text);
+                    webBrowser1.Navigate(uri);
+                }
+                catch (Exception excs)
+                {
+                    MessageBox.Show(excs.Message);
+                }
+#endif
             }
-            catch(WebException exc)
+            catch (WebException exc)
             {
-                textBox1.Text = exc.Message;
+                //textBox1.Text = exc.Message;
             }
+        }
+        private void buttonGo_Click(object sender, EventArgs e)
+        {
+            GoToAddress();
 #if false
             try
             {

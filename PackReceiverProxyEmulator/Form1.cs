@@ -18,7 +18,14 @@ namespace PackReceiverProxyEmulator
     public partial class Form1 : Form
     {
         public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
-        
+        NotifyIcon m_NotifyIcon;
+        ContextMenu m_ContextMenu;
+        ulong total;
+        ulong totalSaved;
+        double savedPercentage;
+        delegate void UpdateStatisticControlsCbk(object[] res);
+        UpdateStatisticControlsCbk m_UpdateStatisticControls;
+        object m_StatisticsLock;
         public Form1()
         {
             InitializeComponent();
@@ -38,6 +45,71 @@ namespace PackReceiverProxyEmulator
             }
             Listener.InitGlobalObjects();
             statistics1.DebugMode = false/*true*/;
+            m_ContextMenu = new ContextMenu();
+            MenuItem[] logLevelSubItems = new MenuItem[5];
+            logLevelSubItems[0] = new MenuItem("None", OnSetLogLevelNone);
+            logLevelSubItems[1] = new MenuItem("Medium", OnSetLogLevelMedium);
+            logLevelSubItems[2] = new MenuItem("High", OnSetLogLevelHigh);
+            logLevelSubItems[3] = new MenuItem("High2", OnSetLogLevelHigh2);
+            logLevelSubItems[4] = new MenuItem("High3", OnSetLogLevelHigh3);
+            MenuItem menuItem = new MenuItem("Log level", logLevelSubItems);
+            m_ContextMenu.MenuItems.Add(menuItem);
+            MenuItem[] modeSubItems = new MenuItem[2];
+            modeSubItems[0] = new MenuItem("Raw", OnSetModeRaw);
+            modeSubItems[1] = new MenuItem("Http", OnSetModePack);
+            menuItem = new MenuItem("Mode", modeSubItems);
+            m_ContextMenu.MenuItems.Add(menuItem);
+            m_ContextMenu.MenuItems.Add("Start", buttonStart_Click);
+            m_ContextMenu.MenuItems.Add("Stop", buttonStop_Click);
+            m_ContextMenu.MenuItems.Add("Flush", buttonFlush_Click);
+            m_ContextMenu.MenuItems.Add("Reset statistics", ResetStatistics);
+            m_NotifyIcon = new NotifyIcon();
+            m_NotifyIcon.Text = "Receiver side proxy";
+            m_NotifyIcon.ContextMenu = m_ContextMenu;
+            m_NotifyIcon.Icon = new System.Drawing.Icon("BlackBerry-8830.ico");
+            m_NotifyIcon.Visible = true;
+            Visible = false;
+            ShowInTaskbar = false;
+            total = 0;
+            totalSaved = 0;
+            savedPercentage = 0;
+            m_UpdateStatisticControls = new UpdateStatisticControlsCbk(ProcessStatistics);
+            m_StatisticsLock = new object();
+            LogUtility.LogUtility.SetSilent(false);
+            ProxyMode = 1;
+            this.Shown += new EventHandler(Form1_Shown);
+        }
+        void OnSetLogLevelNone(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(true);
+        }
+        void OnSetLogLevelMedium(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+        }
+        void OnSetLogLevelHigh(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_HIGH);
+        }
+        void OnSetLogLevelHigh2(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+        }
+        void OnSetLogLevelHigh3(object sender, EventArgs e)
+        {
+            LogUtility.LogUtility.SetSilent(false);
+            LogUtility.LogUtility.SetLevel(LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+        }
+        void OnSetModeRaw(object sender, EventArgs e)
+        {
+            ProxyMode = 0;
+        }
+        void OnSetModePack(object sender, EventArgs e)
+        {
+            ProxyMode = 1;
         }
 
         void radioButtonLogHigh2_Click(object sender, EventArgs e)
@@ -190,10 +262,37 @@ namespace PackReceiverProxyEmulator
                 ProxyMode = 0;
             }
         }
-        
+        public void ProcessStatistics(object[] arg)
+        {
+            object[] res = (object[])arg;
+            Monitor.Enter(m_StatisticsLock);
+            total += (uint)res[0];
+            totalSaved += (uint)res[1];
+            if (total > 0)
+            {
+                savedPercentage = (double)totalSaved / (double)total;
+            }
+            //m_NotifyIcon.BalloonTipText = "Total " + Convert.ToString(total) + " tx " + Convert.ToString(total) + " saved " + Convert.ToString(totalSaved) + " Sent " + Convert.ToString(res[0]) + " Saved " + Convert.ToString(res[1]);
+            //m_NotifyIcon.ShowBalloonTip(1000);
+            Monitor.Exit(m_StatisticsLock);
+        }
         void OnGotResults(object results)
         {
-            statistics1.ProcessStatistics(results);
+            //statistics1.ProcessStatistics(results);
+            //object[] arg = new object[1];
+            //arg[0] = results;
+            //Invoke(m_UpdateStatisticControls, arg);
+        }
+
+        private void ResetStatistics(object sender, EventArgs e)
+        {
+            Monitor.Enter(m_StatisticsLock);
+            total = 0;
+            totalSaved =0;
+            savedPercentage = 0;
+            //m_NotifyIcon.BalloonTipText = "Total " + Convert.ToString(total) + " tx " + Convert.ToString(total) + " saved " + Convert.ToString(totalSaved) + " Sent " + Convert.ToString(res[0]) + " Saved " + Convert.ToString(res[1]);
+            //m_NotifyIcon.ShowBalloonTip(1000);
+            Monitor.Exit(m_StatisticsLock);
         }
 
         private void buttonRefreshStatistics_Click(object sender, EventArgs e)
@@ -209,6 +308,10 @@ namespace PackReceiverProxyEmulator
         private void buttonFlush_Click(object sender, EventArgs e)
         {
             ProxyLib.Proxy.Flush();
+        }
+        void Form1_Shown(object sender, EventArgs e)
+        {
+            Hide();
         }
     }
 }
