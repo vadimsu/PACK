@@ -62,6 +62,7 @@ namespace PackReceiverProxyEmulator
             m_ContextMenu.MenuItems.Add("Start", buttonStart_Click);
             m_ContextMenu.MenuItems.Add("Stop", buttonStop_Click);
             m_ContextMenu.MenuItems.Add("Flush", buttonFlush_Click);
+            m_ContextMenu.MenuItems.Add("Set remote IP", SetRemoteIp);
             m_ContextMenu.MenuItems.Add("Reset statistics", ResetStatistics);
             m_NotifyIcon = new NotifyIcon();
             m_NotifyIcon.Text = "Receiver side proxy";
@@ -312,6 +313,16 @@ namespace PackReceiverProxyEmulator
         void Form1_Shown(object sender, EventArgs e)
         {
             Hide();
+        }
+        void SetRemoteIp(object sender, EventArgs e)
+        {
+            SetRemoteIP setRemoteIp = new SetRemoteIP();
+            setRemoteIp.SetRemoteIp(textBoxRemoteIp.Text);
+            if (setRemoteIp.ShowDialog() != DialogResult.OK)
+            {
+                return;
+            }
+            textBoxRemoteIp.Text = setRemoteIp.GetRemoteIp();
         }
     }
 }

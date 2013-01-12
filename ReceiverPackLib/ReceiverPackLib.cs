@@ -346,6 +346,10 @@ namespace ReceiverPackLib
                 offset += (uint)PackChunking.chunkToLen(chunkList[idx]);
                 idx++;
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " AddUpdateChunk: offset=" + Convert.ToString(CurrentOffset+offset) + " chainChunkList " + Convert.ToString(chainChunkList.Count), ModuleLogLevel);
+                if (rc > 0)
+                {
+                    break;
+                }
             }
             if (lastNonMatchingChunk != chunkList.Count)
             {
