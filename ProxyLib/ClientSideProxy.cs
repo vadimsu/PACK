@@ -36,33 +36,33 @@ namespace ProxyLib
         
         protected virtual void NonProprietarySegmentSubmitStream4Tx(byte []data)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentSubmitStream4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentSubmitStream4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
 
             if (data != null)
             {
                 LogUtility.LogUtility.LogFile("Submit stream to client queue " + Convert.ToString(data.Length), ModuleLogLevel);
                 SubmitStream4ClientTx(data);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentSubmitStream4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentSubmitStream4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         protected override void NonProprietarySegmentTransmit()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentTransmit tx client " + Convert.ToString(TransmittedClient) + " rx server "+ Convert.ToString(ReceivedServer), ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering NonProprietarySegmentTransmit tx client " + Convert.ToString(TransmittedClient) + " rx server " + Convert.ToString(ReceivedServer), LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterNonProprietarySegmentTxCriticalArea();
 
             try
             {
-                LogUtility.LogUtility.LogFile("entered",ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (NonProprietarySegmentTxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("NonProprietarySegmentTransmit: tx is in progress,return", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("NonProprietarySegmentTransmit: tx is in progress,return", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveNonProprietarySegmentTxCriticalArea();
                     return;
                 }
 
                 if (IsClientTxQueueEmpty())
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " cannot get from the queue", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " cannot get from the queue", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveNonProprietarySegmentTxCriticalArea();
                     return;
                 }
@@ -76,6 +76,9 @@ namespace ProxyLib
                     m_OnNonProprietaryTransmittedCbk.SetBuffer(buff, 0, buff.Length);
                     if (!clientSideSocket.SendAsync(m_OnNonProprietaryTransmittedCbk))
                     {
+                        if (m_OnNonProprietaryTransmittedCbk.BytesTransferred != buff.Length)
+                        {
+                        }
                         TransmittedClient += (uint)buff.Length;
                         OnClientTransmitted(buff.Length);
                         LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentTransmit (completed synchronously)", ModuleLogLevel);
@@ -90,15 +93,15 @@ namespace ProxyLib
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 NonProprietarySegmentTxInProgress = false;
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentTransmit", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving NonProprietarySegmentTransmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             LeaveNonProprietarySegmentTxCriticalArea();
         }
         protected virtual void OnProprietarySegmentMsgReceived()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentMsgReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received message type " + Convert.ToString(rxStateMachine.GetKind()), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received message type " + Convert.ToString(rxStateMachine.GetKind()), ModuleLogLevel);
                 if (rxStateMachine.GetMsgBody() == null)
                 {
                     LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " msg body is null", ModuleLogLevel);
@@ -118,19 +121,19 @@ namespace ProxyLib
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentMsgReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         protected override void OnProprietarySegmentReceived(object sender, SocketAsyncEventArgs e)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterProprietarySegmentRxCriticalArea();
             try
             {
                 int Received = 0;
-                LogUtility.LogUtility.LogFile("entered", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (!ProprietarySegmentRxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("OnProprietarySegmentReceived: rx is not in progress", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("OnProprietarySegmentReceived: rx is not in progress", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveProprietarySegmentRxCriticalArea();
                     return;
                 }
@@ -140,7 +143,7 @@ namespace ProxyLib
                     CheckConnectionAndShutDownIfGone();
                     goto prop_rx;
                 }
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received (proprietary segment) " + Convert.ToString(Received), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received (proprietary segment) " + Convert.ToString(Received), ModuleLogLevel);
                 ReceivedServer += (uint)Received;
                 rxStateMachine.OnRxComplete(ProprietarySementRxBuf, Received);
                 ProprietarySegmentRxInProgress = false;
@@ -150,7 +153,7 @@ namespace ProxyLib
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 return;
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         prop_rx:
             LeaveProprietarySegmentRxCriticalArea();
             ReStartAllOperations(false);
@@ -159,14 +162,14 @@ namespace ProxyLib
         protected override void ProprietarySegmentReceive()
         {
             bool IsRestartRequired = false;
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentReceive", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentReceive", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterProprietarySegmentRxCriticalArea();
             try
             {
-                LogUtility.LogUtility.LogFile("entered", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (ProprietarySegmentRxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("ProprietarySegmentReceive: rx is in progress,return", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("ProprietarySegmentReceive: rx is in progress,return", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveProprietarySegmentRxCriticalArea();
                     return;
                 }
@@ -196,7 +199,7 @@ namespace ProxyLib
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentReceive", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentReceive", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             LeaveProprietarySegmentRxCriticalArea();
             CheckConnectionAndShutDownIfGone();
             if (IsRestartRequired)
@@ -218,7 +221,7 @@ namespace ProxyLib
                 }
             }
             TransmittedServer += (uint)transmitted;
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sent (proprietary segment) " + Convert.ToString(transmitted), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sent (proprietary segment) " + Convert.ToString(transmitted), ModuleLogLevel);
             txStateMachine.OnTxComplete((uint)transmitted);
             if (txStateMachine.IsTransactionCompleted())
             {
@@ -227,14 +230,14 @@ namespace ProxyLib
         }
         protected override void OnProprietarySegmentTransmitted(object sender, SocketAsyncEventArgs e)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentTransmitted", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentTransmitted", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterProprietarySegmentTxCriticalArea();
             try
             {
-                LogUtility.LogUtility.LogFile("entered",ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (!ProprietarySegmentTxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("OnProprietarySegmentTransmitted: tx is not in progress, return", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("OnProprietarySegmentTransmitted: tx is not in progress, return", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveProprietarySegmentTxCriticalArea();
                     return;
                 }
@@ -253,7 +256,7 @@ namespace ProxyLib
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentTransmitted", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentTransmitted", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
 end_server_tx:
             LeaveProprietarySegmentTxCriticalArea();
             ReStartAllOperations(false);
@@ -267,6 +270,9 @@ end_server_tx:
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Trying to send to destination " + Convert.ToString(buff2transmit.Length), ModuleLogLevel);
                 if (!destinationSideSocket.SendAsync(m_OnProprietaryTransmittedCbk))
                 {
+                    if (m_OnProprietaryTransmittedCbk.BytesTransferred != buff2transmit.Length)
+                    {
+                    }
                     OnProprietarySegmentTransmitted(buff2transmit.Length);
                     LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving _ProprietarySegmentTransmit (completed synchronously)", ModuleLogLevel);
                     return;
@@ -282,15 +288,15 @@ end_server_tx:
 
         protected override void OnNonProprietarySegmentTransmitted(object sender, SocketAsyncEventArgs e)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnNonProprietarySegmentTransmitted", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnNonProprietarySegmentTransmitted", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterNonProprietarySegmentTxCriticalArea();
             try
             {
                 int sent = 0;
-                LogUtility.LogUtility.LogFile("entered", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (!NonProprietarySegmentTxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("OnNonProprietarySegmentTransmitted: tx is not in progress, return", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("OnNonProprietarySegmentTransmitted: tx is not in progress, return", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveNonProprietarySegmentTxCriticalArea();
                     return;
                 }
@@ -298,11 +304,11 @@ end_server_tx:
                 
                 if (sent < 0)
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " OnNonProprietarySegmentTransmitted " + "sent error", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " OnNonProprietarySegmentTransmitted " + "sent error", ModuleLogLevel);
                     return;
                 }
                 TransmittedClient += (uint)sent;
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " " + Convert.ToString(sent) + " sent to client overall " + Convert.ToString(TransmittedClient), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " " + Convert.ToString(sent) + " sent to client overall " + Convert.ToString(TransmittedClient), ModuleLogLevel);
                 NonProprietarySegmentTxInProgress = false;
                 OnClientTransmitted(sent);
             }
@@ -312,41 +318,41 @@ end_server_tx:
                 LeaveNonProprietarySegmentTxCriticalArea();
                 return;
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnNonProprietarySegmentTransmitted", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnNonProprietarySegmentTransmitted", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             LeaveNonProprietarySegmentTxCriticalArea();
             ReStartAllOperations(false);
         }
         protected virtual void ProprietarySegmentSubmitMsg4Tx(byte[] data)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentSubmitMsg4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentSubmitMsg4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             
             if (data != null)
             {
-                LogUtility.LogUtility.LogFile("submit msg to dest " + Convert.ToString(data.Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile("submit msg to dest " + Convert.ToString(data.Length), ModuleLogLevel);
                 SubmitMsg4DestinationTx(data);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentSubmitMsg4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentSubmitMsg4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         protected virtual void ProprietarySegmentSubmitStream4Tx(byte[] data)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentSubmitStream4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentSubmitStream4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             if (data != null)
             {
-                LogUtility.LogUtility.LogFile("submit stream for tx to dest " + Convert.ToString(data.Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile("submit stream for tx to dest " + Convert.ToString(data.Length), ModuleLogLevel);
                 SubmitStream4DestinationTx(data);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentSubmitStream4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentSubmitStream4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         protected override void ProprietarySegmentTransmit()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentTransmit", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProprietarySegmentTransmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterProprietarySegmentTxCriticalArea();
             try
             {
-                LogUtility.LogUtility.LogFile("entered", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (ProprietarySegmentTxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " tx is in progress, return", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " tx is in progress, return", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveProprietarySegmentTxCriticalArea();
                     return;
                 }
@@ -357,11 +363,11 @@ end_server_tx:
                     byte []data = GetDestination2Transmit(out length,out isMsg);
                     if (data == null)
                     {
-                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " queue is empty", ModuleLogLevel);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " queue is empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                         LeaveProprietarySegmentTxCriticalArea();
                         return;
                     }
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " initiating new msg len" + Convert.ToString(data.Length) + " " + Convert.ToString(isMsg), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " initiating new msg len " + Convert.ToString(data.Length) + " " + Convert.ToString(isMsg), ModuleLogLevel);
                     if (isMsg)
                     {
                         txStateMachine.SetKind((byte)PackEnvelopeKinds.PACK_ENVELOPE_UPSTREAM_MSG_KIND);
@@ -384,7 +390,7 @@ end_server_tx:
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentTransmit", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProprietarySegmentTransmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             LeaveProprietarySegmentTxCriticalArea();
             CheckConnectionAndShutDownIfGone();
         }
@@ -394,15 +400,15 @@ end_server_tx:
         }
         protected override void OnNonProprietarySegmentReceived(object sender, SocketAsyncEventArgs e)
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnNonProprietarySegmentReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnNonProprietarySegmentReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterNonProprietarySegmentRxCriticalArea();
             try
             {
                 int Received = 0;
-                LogUtility.LogUtility.LogFile("entered", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (!NonProprietarySegmentRxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("OnNonProprietarySegmentReceived: exiting, rx is not in progress", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("OnNonProprietarySegmentReceived: exiting, rx is not in progress", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveNonProprietarySegmentRxCriticalArea();
                     return;
                 }
@@ -417,7 +423,7 @@ end_server_tx:
                     return;
                 }
                 ReceivedClient += (uint)Received;
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received on non-proprietary segment " + Convert.ToString(Received) + " overall " + Convert.ToString(ReceivedClient), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received on non-proprietary segment " + Convert.ToString(Received) + " overall " + Convert.ToString(ReceivedClient), ModuleLogLevel);
                 byte[] data = new byte[Received];
                 CopyBytes(NonProprietarySegmentRxBuf, data, Received);
                 ProprietarySegmentSubmitStream4Tx(data);
@@ -428,21 +434,21 @@ end_server_tx:
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnNonProprietarySegmentReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnNonProprietarySegmentReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             LeaveNonProprietarySegmentRxCriticalArea();
             ReStartAllOperations(false);
         }
         protected override void NonProprietarySegmentReceive()
         {
             bool IsRestartRequired = false;
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ReceiveNonProprietarySegment", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ReceiveNonProprietarySegment", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             EnterNonProprietarySegmentRxCriticalArea();
             try
             {
-                LogUtility.LogUtility.LogFile("entered", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("entered", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 if (NonProprietarySegmentRxInProgress)
                 {
-                    LogUtility.LogUtility.LogFile("ReceiveNonProprietarySegment: exiting, rx is in progress", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("ReceiveNonProprietarySegment: exiting, rx is in progress", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveNonProprietarySegmentRxCriticalArea();
                     return;
                 }
@@ -474,7 +480,7 @@ end_server_tx:
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ReceiveNonProprietarySegment", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ReceiveNonProprietarySegment", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             LeaveNonProprietarySegmentRxCriticalArea();
             CheckConnectionAndShutDownIfGone();
             if (IsRestartRequired)

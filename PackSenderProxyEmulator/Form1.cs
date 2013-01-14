@@ -345,7 +345,7 @@ namespace PackSenderProxyEmulator
                 savedPercentage = (double)totalSaved / (double)totalSent;
             }
             //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
-            m_NotifyIcon.BalloonTipText = "Total: saved " + Convert.ToString(totalSaved) + " " + Convert.ToString(savedPercentage*100) + "% Saved " + Convert.ToString(res[3]);
+            m_NotifyIcon.BalloonTipText = "Total: saved " + Convert.ToString(totalSaved) + " " + Convert.ToString(savedPercentage*100) + "% Saved " + Convert.ToString(res[3] + " Total received " + Convert.ToString(totalReceived) + " Total sent " + Convert.ToString(totalSent));
             m_NotifyIcon.ShowBalloonTip(1000);
             Monitor.Exit(m_StatisticsLock);
         }

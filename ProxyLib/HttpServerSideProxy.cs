@@ -60,7 +60,7 @@ namespace ProxyLib
         }
         public override void ProcessUpStreamDataKind()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProcessUpStreamDataKind", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProcessUpStreamDataKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
                 if ((destinationSideSocket != null) && (destinationSideSocket.Connected))
@@ -92,7 +92,7 @@ namespace ProxyLib
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProcessUpStreamDataKind", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProcessUpStreamDataKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         public override void ProcessUpStreamMsgKind()
         {

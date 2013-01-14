@@ -15,7 +15,7 @@ namespace ProxyLib
     //[Synchronization()]
     public abstract class Proxy
     {
-        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
+        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_HIGH;
 
         protected Queue clientTxQueue;
         protected Queue destinationTxQueue;
@@ -477,32 +477,32 @@ namespace ProxyLib
         }
         public byte []GetClient2Transmit(out uint streamLength, out bool isMsg)
         {
-            LogUtility.LogUtility.LogFile("Entering GetClient2Transmit", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Entering GetClient2Transmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
                 byte []data;
                 if (Queue.Synchronized(clientTxQueue).Count > 0)
                 {
                     data = (byte[])Queue.Synchronized(clientTxQueue).Dequeue();
-                    LogUtility.LogUtility.LogFile("Queue is not empty", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("Queue is not empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     streamLength = (uint)data.Length;
                     isMsg = true;
                     IsMsgBeingTransmitted2Client = true;
-                    LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     return data;
                 }
-                LogUtility.LogUtility.LogFile("Queue is empty", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Queue is empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 EnterClientStreamCriticalArea();
                 if (clientStream.Length == 0)
                 {
                     streamLength = 0;
                     isMsg = false;
-                    LogUtility.LogUtility.LogFile("Stream is empty", ModuleLogLevel);
-                    LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("Stream is empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+                    LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveClientStreamCriticalArea();
                     return null;
                 }
-                LogUtility.LogUtility.LogFile("Stream is not empty", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Stream is not empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
 
                 isMsg = false;
                 IsMsgBeingTransmitted2Client = false;
@@ -513,7 +513,7 @@ namespace ProxyLib
                 byte[] bytes = clientStream.GetBytesLimited(4096);
                 streamLength = (uint)bytes.Length;
 #endif
-                LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit " + Convert.ToString(clientStream.Length), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit " + Convert.ToString(clientStream.Length), LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 LeaveClientStreamCriticalArea();
                 return bytes;
             }
@@ -522,7 +522,7 @@ namespace ProxyLib
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 streamLength = 0;
                 isMsg = false;
-                LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 return null;
             }
         }
@@ -534,30 +534,30 @@ namespace ProxyLib
                 if (Queue.Synchronized(destinationTxQueue).Count > 0)
                 {
                     data = (byte[])Queue.Synchronized(destinationTxQueue).Dequeue();
-                    LogUtility.LogUtility.LogFile("Queue is not empty", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("Queue is not empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     streamLength = (uint)data.Length;
                     isMsg = true;
                     IsMsgBeingTransmitted2Destination = true;
-                    LogUtility.LogUtility.LogFile("Leaving GetDestination2Transmit", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("Leaving GetDestination2Transmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     return data;
                 }
-                LogUtility.LogUtility.LogFile("Queue is empty", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Queue is empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 EnterDestinationStreamCriticalArea();
                 if (destinationStream.Length == 0)
                 {
                     streamLength = 0;
                     isMsg = false;
-                    LogUtility.LogUtility.LogFile("Stream is empty", ModuleLogLevel);
-                    LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile("Stream is empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+                    LogUtility.LogUtility.LogFile("Leaving GetClient2Transmit", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                     LeaveDestinationStreamCriticalArea();
                     return null;
                 }
-                LogUtility.LogUtility.LogFile("Stream is not empty", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Stream is not empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 streamLength = (uint)destinationStream.Length;
                 isMsg = false;
                 IsMsgBeingTransmitted2Destination = false;
                 byte[] bytes = destinationStream.GetBytes();
-                LogUtility.LogUtility.LogFile("Leaving GetDestination2Transmit " + Convert.ToString(destinationStream.Length), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Leaving GetDestination2Transmit " + Convert.ToString(destinationStream.Length), LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
                 LeaveDestinationStreamCriticalArea();
                 return bytes;
             }

@@ -289,7 +289,7 @@ namespace ChunkAndChainFileManager
             chunkAndChainFileManager.chainId4Lookup = fileManager.AddUpdateChainFile(buf, chunkAndChainFileManager.chainId4Lookup);
             return presentChunks;
         }
-        public int ChainMatch(List<long> chunkList,int chunkListIdx,List<ChunkListAndChainId> chainsChunksList)
+        public int ChainMatch(List<long> chunkList,int chunkListIdx,List<ChunkListAndChainId> chainsChunksList,List<long> sentChainsList)
         {
             Chain chain;
             uint longest_chain = 0;
@@ -310,6 +310,12 @@ namespace ChunkAndChainFileManager
 //            LogUtility.LogUtility.LogFile("****chunk to math found " + Convert.ToString(PackChunking.chunkToLen(chunkList[chunkListIdx])), ModuleLogLevel);
             foreach (long ch in chunkCB.chains)
             {
+                if (sentChainsList.Contains(ch))
+                {
+                    AtLeastEqualChainFound = true;
+                    LogUtility.LogUtility.LogFile("Chain already sent " + Convert.ToString(ch), ModuleLogLevel);
+                    continue;
+                }
                 if (!GetChain(ch, out chain))
                 {
                     LogUtility.LogUtility.LogFile("Cannot get chain!!!! " + Convert.ToString(ch), ModuleLogLevel);

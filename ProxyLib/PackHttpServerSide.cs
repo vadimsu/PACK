@@ -32,10 +32,10 @@ namespace ProxyLib
         }
         void OnMsgRead4Tx(object param, byte[] msg)
         {
-            LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             ProprietarySegmentSubmitMsg4Tx(msg);
             //ProprietarySegmentTransmit();
-            LogUtility.LogUtility.LogFile("Leaving OnMsgReady4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Leaving OnMsgReady4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         public override void OnDownStreamTransmissionOpportunity()
         {
@@ -45,7 +45,7 @@ namespace ProxyLib
         }
         public override void ProcessUpStreamMsgKind()
         {
-            LogUtility.LogUtility.LogFile("Entering ProcessUpStreamMsgKind", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Entering ProcessUpStreamMsgKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
                 EnterProprietaryLibCriticalArea();
@@ -61,7 +61,7 @@ namespace ProxyLib
                 }
                 //ProprietarySegmentSubmitStream4Tx(data);
                 //ProprietarySegmentTransmit();
-                LogUtility.LogUtility.LogFile("Leaving ProcessUpStreamMsgKind", ModuleLogLevel);
+                LogUtility.LogUtility.LogFile("Leaving ProcessUpStreamMsgKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             }
             catch (Exception exc)
             {
@@ -76,7 +76,7 @@ namespace ProxyLib
         }
         public override void ProcessDownStreamData(byte[] data)
         {
-            LogUtility.LogUtility.LogFile("Entering ProcessDownStreamData", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Entering ProcessDownStreamData", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
                 //LogUtility.LogUtility.LogFile(ASCIIEncoding.ASCII.GetString(data),LogUtility.LogLevels.LEVEL_LOG_HIGH);
@@ -98,7 +98,7 @@ namespace ProxyLib
                     LogUtility.LogUtility.LogFile("EXCEPTION: " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     LeaveProprietaryLibCriticalArea();
                 }
-                LogUtility.LogUtility.LogFile("Leaving ProcessDownStreamData", /*ModuleLogLevel*/LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile("Leaving ProcessDownStreamData", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             }
             catch (Exception exc)
             {

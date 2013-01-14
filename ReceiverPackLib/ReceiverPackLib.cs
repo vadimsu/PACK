@@ -75,6 +75,7 @@ namespace ReceiverPackLib
         uint TotalSaved;
         EndPoint Id;
         MemoryStream inComingData;
+        List<long> m_SentChainList;
         object libMutex;
         ChunkAndChainFileManager.ChunkAndChainFileManager chunkAndChainFileManager;
         LogUtility.LogUtility binaryLogging;
@@ -96,13 +97,13 @@ namespace ReceiverPackLib
             int FlushSwTimer = 0;
             while (true)
             {
-                Monitor.Enter(m_Chains2SaveMutex);
-                Chains2Save []chains2Save = new Chains2Save[m_Chains2Save.Count];
-                m_Chains2Save.CopyTo(chains2Save);
-                m_Chains2Save.Clear();
-                Monitor.Exit(m_Chains2SaveMutex);
                 try
                 {
+                    Monitor.Enter(m_Chains2SaveMutex);
+                    Chains2Save[] chains2Save = new Chains2Save[m_Chains2Save.Count];
+                    m_Chains2Save.CopyTo(chains2Save);
+                    m_Chains2Save.Clear();
+                    Monitor.Exit(m_Chains2SaveMutex);
                     foreach (Chains2Save chain2Save in chains2Save)
                     {
                         ChunkAndChainFileManager.ChunkAndChainFileManager.SaveChain(chain2Save.GetChunkList(), chain2Save.GetFirstNonMatchingChunk(), chain2Save.GetLastNonMatchingChunk(), chain2Save.GetPacket(), chain2Save.GetFirstNonMatchingChunkOffset(),chain2Save.GetChunkAndChainFileManager());
@@ -154,6 +155,7 @@ namespace ReceiverPackLib
             chunkAndChainFileManager = new ChunkAndChainFileManager.ChunkAndChainFileManager();
             inComingData = null;
             libMutex = new object();
+            m_SentChainList = new List<long>();
         }
         public long GetTotalData()
         {
@@ -318,7 +320,7 @@ namespace ReceiverPackLib
             
             foreach (long chunk in chunkList)
             {
-                int rc = chunkAndChainFileManager.ChainMatch(chunkList, idx, chainChunkList);
+                int rc = chunkAndChainFileManager.ChainMatch(chunkList, idx, chainChunkList, m_SentChainList);
                
                 if (rc < 0)
                 {
@@ -348,6 +350,7 @@ namespace ReceiverPackLib
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " AddUpdateChunk: offset=" + Convert.ToString(CurrentOffset+offset) + " chainChunkList " + Convert.ToString(chainChunkList.Count), ModuleLogLevel);
                 if (rc > 0)
                 {
+                    m_SentChainList.Add(chainChunkList[0].chainId);
                     break;
                 }
             }

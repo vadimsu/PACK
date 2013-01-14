@@ -38,14 +38,14 @@ namespace ProxyLib
         }
         void OnMsgRead4Tx(object param, byte[] msg)
         {
-            LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             ProprietarySegmentSubmitMsg4Tx(msg);
             //ProprietarySegmentTransmit();
-            LogUtility.LogUtility.LogFile("Leaving OnMsgReady4Tx", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Leaving OnMsgReady4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         void OnDataReceived(byte[] data,int offset,int length)
         {
-            LogUtility.LogUtility.LogFile("Entering OnDataReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Entering OnDataReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
                 //LogUtility.LogUtility.LogFile(ASCIIEncoding.ASCII.GetString(data),LogUtility.LogLevels.LEVEL_LOG_HIGH);
@@ -62,7 +62,7 @@ namespace ProxyLib
             //LogUtility.LogUtility.LogBinary("_total", buff);
             NonProprietarySegmentSubmitStream4Tx(/*data*/buff);
             NonProprietarySegmentTransmit();
-            LogUtility.LogUtility.LogFile("Leaving OnDataReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("Leaving OnDataReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         protected override uint GetSaved()
         {
@@ -74,7 +74,7 @@ namespace ProxyLib
         }
         protected override void OnProprietarySegmentMsgReceived()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentMsgReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received message type " + Convert.ToString(rxStateMachine.GetKind()), ModuleLogLevel);
@@ -112,7 +112,7 @@ namespace ProxyLib
                 LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 throw new Exception("Exception in OnProprietarySegmentMsgReceived", exc);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentMsgReceived", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         string GenerateDebugInfo()
         {
