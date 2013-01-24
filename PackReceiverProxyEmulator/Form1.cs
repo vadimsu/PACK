@@ -265,17 +265,26 @@ namespace PackReceiverProxyEmulator
         }
         public void ProcessStatistics(object[] arg)
         {
-            object[] res = (object[])arg;
-            Monitor.Enter(m_StatisticsLock);
-            total += (uint)res[0];
-            totalSaved += (uint)res[1];
-            if (total > 0)
+            try
             {
-                savedPercentage = (double)totalSaved / (double)total;
+                long temp;
+                object[] res = (object[])arg;
+                temp = (long)res[0];
+                Monitor.Enter(m_StatisticsLock);
+                total += (uint)temp;
+                totalSaved += (uint)res[1];
+                if (total > 0)
+                {
+                    savedPercentage = (double)totalSaved / (double)total;
+                }
+                m_NotifyIcon.BalloonTipText = "Total:  tx " + Convert.ToString(total) + " saved " + Convert.ToString(totalSaved) + " Sent " + Convert.ToString(res[0]) + " Saved " + Convert.ToString(res[1] + " " + Convert.ToString(savedPercentage*100) + "%");
+                m_NotifyIcon.ShowBalloonTip(1000);
+                Monitor.Exit(m_StatisticsLock);
             }
-            //m_NotifyIcon.BalloonTipText = "Total " + Convert.ToString(total) + " tx " + Convert.ToString(total) + " saved " + Convert.ToString(totalSaved) + " Sent " + Convert.ToString(res[0]) + " Saved " + Convert.ToString(res[1]);
-            //m_NotifyIcon.ShowBalloonTip(1000);
-            Monitor.Exit(m_StatisticsLock);
+            catch (Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
         void OnGotResults(object results)
         {
@@ -283,17 +292,34 @@ namespace PackReceiverProxyEmulator
             //object[] arg = new object[1];
             //arg[0] = results;
             //Invoke(m_UpdateStatisticControls, arg);
+            try
+            {
+                object[] arg = new object[1];
+                arg[0] = results;
+                Invoke(m_UpdateStatisticControls, arg);
+            }
+            catch (Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
 
         private void ResetStatistics(object sender, EventArgs e)
         {
-            Monitor.Enter(m_StatisticsLock);
-            total = 0;
-            totalSaved =0;
-            savedPercentage = 0;
-            //m_NotifyIcon.BalloonTipText = "Total " + Convert.ToString(total) + " tx " + Convert.ToString(total) + " saved " + Convert.ToString(totalSaved) + " Sent " + Convert.ToString(res[0]) + " Saved " + Convert.ToString(res[1]);
-            //m_NotifyIcon.ShowBalloonTip(1000);
-            Monitor.Exit(m_StatisticsLock);
+            try
+            {
+                Monitor.Enter(m_StatisticsLock);
+                total = 0;
+                totalSaved = 0;
+                savedPercentage = 0;
+                //m_NotifyIcon.BalloonTipText = "Total " + Convert.ToString(total) + " tx " + Convert.ToString(total) + " saved " + Convert.ToString(totalSaved) + " Sent " + Convert.ToString(res[0]) + " Saved " + Convert.ToString(res[1]);
+                //m_NotifyIcon.ShowBalloonTip(1000);
+                Monitor.Exit(m_StatisticsLock);
+            }
+            catch (Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
 
         private void buttonRefreshStatistics_Click(object sender, EventArgs e)

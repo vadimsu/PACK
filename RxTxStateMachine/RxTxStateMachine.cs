@@ -25,7 +25,7 @@ namespace RxTxStateMachine
         protected byte[] m_Header;
         protected byte[] m_Body;
         protected byte m_State;
-        protected EndPoint Id;
+        protected EndPoint m_Id;
 
         public FramingStateMachine(EndPoint id)
         {
@@ -33,7 +33,7 @@ namespace RxTxStateMachine
             m_Body = null;
             m_Header = new byte[9];
             m_State = (byte)PackTxRxState_e.PACK_DUMMY_STATE;
-            Id = id;
+            m_Id = id;
         }
 
         public bool IsTransactionCompleted()
@@ -107,13 +107,13 @@ namespace RxTxStateMachine
         {
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " GetBytes Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " GetBytes Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
                 //LogUtility.LogUtility.LogFile(Environment.StackTrace);
                 switch (m_State)
                 {
                     case (byte)PackTxRxState_e.PACK_DUMMY_STATE:
                         m_State = (byte)PackTxRxState_e.PACK_HEADER_STATE;
-                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Went header state", ModuleLogLevel);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Went header state", ModuleLogLevel);
                         return m_Header;
                     case (byte)PackTxRxState_e.PACK_HEADER_STATE:
                         return m_Header;
@@ -136,12 +136,12 @@ namespace RxTxStateMachine
         {
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " GetBytes (limited) Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " GetBytes (limited) Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
                 //LogUtility.LogUtility.LogFile(Environment.StackTrace);
                 if (m_State == (byte)PackTxRxState_e.PACK_DUMMY_STATE)
                 {
                     m_State = (byte)PackTxRxState_e.PACK_HEADER_STATE;
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Went header state", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Went header state", ModuleLogLevel);
                 }
                 if(m_State == (byte)PackTxRxState_e.PACK_HEADER_STATE)
                 {
@@ -178,7 +178,7 @@ namespace RxTxStateMachine
         {
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " OnTxComplete Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " OnTxComplete Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
                 switch (m_State)
                 {
                     case (byte)PackTxRxState_e.PACK_HEADER_STATE:
@@ -312,7 +312,7 @@ namespace RxTxStateMachine
                                     }
                                     catch (Exception exc)
                                     {
-                                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + "EXCEPTION " + exc.Message, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "EXCEPTION " + exc.Message, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                                     }
                                 }
                                 m_ByteCounter = 0;

@@ -21,13 +21,13 @@ namespace ProxyLib
             : base(sock)
         {
             onMessageReadyToTx = new OnMessageReadyToTx(OnMsgRead4Tx);
-            Id = sock.RemoteEndPoint;
-            senderPackLib = new SenderPackLib.SenderPackLib(Id, onMessageReadyToTx);
+            m_Id = sock.RemoteEndPoint;
+            senderPackLib = new SenderPackLib.SenderPackLib(m_Id, onMessageReadyToTx);
         }
-        void OnMsgRead4Tx(object param, byte[] msg)
+        void OnMsgRead4Tx(object param, byte[] msg,bool dummy)
         {
             LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", ModuleLogLevel);
-            ProprietarySegmentSubmitMsg4Tx(msg);
+            ProprietarySegmentSubmitMsg4Tx(msg,dummy);
             //ProprietarySegmentTransmit();
             LogUtility.LogUtility.LogFile("Leaving OnMsgReady4Tx", ModuleLogLevel);
         }
@@ -37,12 +37,12 @@ namespace ProxyLib
             EnterProprietaryLibCriticalArea();
             try
             {
-                senderPackLib.OnDataByteMode(rxStateMachine.GetMsgBody(), 0);
+                senderPackLib.OnDataByteMode(m_rxStateMachine.GetMsgBody(), 0);
                 LeaveProprietaryLibCriticalArea();
             }
             catch (Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 LeaveProprietaryLibCriticalArea();
             }
             //ProprietarySegmentSubmitStream4Tx(data);
@@ -62,23 +62,25 @@ namespace ProxyLib
             Flush();
             LogUtility.LogUtility.LogFile("Leaving OnBeginShutdown", ModuleLogLevel);
         }
-        public override void ProcessDownStreamData(byte[] data)
+        public override bool ProcessDownStreamData(byte[] data, bool isInvokedOnTransmit)
         {
             byte[] buff = null;
+            bool ret = false;
             LogUtility.LogUtility.LogFile("Entering ProcessDownStreamData", ModuleLogLevel);
             EnterProprietaryLibCriticalArea();
             try
             {
-                senderPackLib.AddData(data);
+                ret = senderPackLib.AddData(data,isInvokedOnTransmit);
                 
                 LeaveProprietaryLibCriticalArea();
             }
             catch (Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 LeaveProprietaryLibCriticalArea();
             }
             LogUtility.LogUtility.LogFile("Leaving ProcessDownStreamData", ModuleLogLevel);
+            return ret;
         }
     }
 }

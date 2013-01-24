@@ -320,42 +320,49 @@ namespace FileManager
 
         public static void OnExiting()
         {
-            LogUtility.LogUtility.LogFile("Entering OnExiting ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            string file = "";
-            file += FileType2Extension((byte)FileTypes.CHAIN_FILE_TYPE);
-            file = WorkingDirectory + "\\" + file;
-            Monitor.Enter(chainFilesMutex);
-            FileStream fs = File.Open(file, FileMode.Create, FileAccess.ReadWrite);
-            LogUtility.LogUtility.LogFile("writing chains ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            foreach(KeyValuePair<long,byte []> kvp in chainfileMap)
+            try
             {
-                byte[] buff = BitConverter.GetBytes(kvp.Key);
-                fs.Write(buff, 0, buff.Length);
-                buff = BitConverter.GetBytes(kvp.Value.Length);
-                LogUtility.LogUtility.LogFile("key " + Convert.ToString(kvp.Key) + " len " + Convert.ToString(kvp.Value.Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                fs.Write(buff, 0, buff.Length);
-                fs.Write(kvp.Value, 0, kvp.Value.Length);
+                LogUtility.LogUtility.LogFile("Entering OnExiting ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                string file = "";
+                file += FileType2Extension((byte)FileTypes.CHAIN_FILE_TYPE);
+                file = WorkingDirectory + "\\" + file;
+                Monitor.Enter(chainFilesMutex);
+                FileStream fs = File.Open(file, FileMode.Create, FileAccess.ReadWrite);
+                LogUtility.LogUtility.LogFile("writing chains ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                foreach (KeyValuePair<long, byte[]> kvp in chainfileMap)
+                {
+                    byte[] buff = BitConverter.GetBytes(kvp.Key);
+                    fs.Write(buff, 0, buff.Length);
+                    buff = BitConverter.GetBytes(kvp.Value.Length);
+                    LogUtility.LogUtility.LogFile("key " + Convert.ToString(kvp.Key) + " len " + Convert.ToString(kvp.Value.Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    fs.Write(buff, 0, buff.Length);
+                    fs.Write(kvp.Value, 0, kvp.Value.Length);
+                }
+                fs.Close();
+                Monitor.Exit(chainFilesMutex);
+                file = "";
+                file += FileType2Extension((byte)FileTypes.CHUNK_CTRL_FILE_TYPE);
+                file = WorkingDirectory + "\\" + file;
+                Monitor.Enter(chunkCtrlFilesMutex);
+                fs = File.Open(file, FileMode.Create, FileAccess.ReadWrite);
+                LogUtility.LogUtility.LogFile("writing chunks ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                foreach (KeyValuePair<long, byte[]> kvp in chunkCBfileMap)
+                {
+                    byte[] buff = BitConverter.GetBytes(kvp.Key);
+                    fs.Write(buff, 0, buff.Length);
+                    buff = BitConverter.GetBytes(kvp.Value.Length);
+                    LogUtility.LogUtility.LogFile("key " + Convert.ToString(kvp.Key) + " len " + Convert.ToString(kvp.Value.Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    fs.Write(buff, 0, buff.Length);
+                    fs.Write(kvp.Value, 0, kvp.Value.Length);
+                }
+                fs.Close();
+                Monitor.Exit(chunkCtrlFilesMutex);
+                LogUtility.LogUtility.LogFile("Leaving OnExiting ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            fs.Close();
-            Monitor.Exit(chainFilesMutex);
-            file = "";
-            file += FileType2Extension((byte)FileTypes.CHUNK_CTRL_FILE_TYPE);
-            file = WorkingDirectory + "\\" + file;
-            Monitor.Enter(chunkCtrlFilesMutex);
-            fs = File.Open(file, FileMode.Create, FileAccess.ReadWrite);
-            LogUtility.LogUtility.LogFile("writing chunks ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-            foreach (KeyValuePair<long, byte[]> kvp in chunkCBfileMap)
+            catch (Exception exc)
             {
-                byte[] buff = BitConverter.GetBytes(kvp.Key);
-                fs.Write(buff, 0, buff.Length);
-                buff = BitConverter.GetBytes(kvp.Value.Length);
-                LogUtility.LogUtility.LogFile("key " + Convert.ToString(kvp.Key) + " len " + Convert.ToString(kvp.Value.Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                fs.Write(buff, 0, buff.Length);
-                fs.Write(kvp.Value, 0, kvp.Value.Length);
+                LogUtility.LogUtility.LogFile("EXCEPTION: " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            fs.Close();
-            Monitor.Exit(chunkCtrlFilesMutex);
-            LogUtility.LogUtility.LogFile("Leaving OnExiting ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
         }
     }
 }

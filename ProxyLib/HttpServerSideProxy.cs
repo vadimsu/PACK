@@ -27,7 +27,7 @@ namespace ProxyLib
         public HttpServerSideProxy(Socket sock)
             : base(sock)
         {
-            Id = sock.RemoteEndPoint;
+            m_Id = sock.RemoteEndPoint;
             m_RequestedPath = null;
             HttpReqCleanUp();
         }
@@ -49,29 +49,29 @@ namespace ProxyLib
         }
         public override byte []GetFirstBuffToTransmitDestination()
         {
-            byte[] buff = rxStateMachine.GetMsgBody();
+            byte[] buff = m_rxStateMachine.GetMsgBody();
             m_HttpQuery += Encoding.ASCII.GetString(buff, 0, buff.Length);
             if (IsValidQuery())
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Valid query:  " + m_HttpQuery, LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Valid query:  " + m_HttpQuery, LogUtility.LogLevels.LEVEL_LOG_HIGH3);
                 ProcessQuery();
             }
             return null;
         }
         public override void ProcessUpStreamDataKind()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProcessUpStreamDataKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Entering ProcessUpStreamDataKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
-                if ((destinationSideSocket != null) && (destinationSideSocket.Connected))
+                if ((m_destinationSideSocket != null) && (m_destinationSideSocket.Connected))
                 {
-                    LogUtility.LogUtility.LogFile("destination connected, submit " + Convert.ToString(rxStateMachine.GetMsgBody().Length), ModuleLogLevel);
-                    NonProprietarySegmentSubmitStream4Tx(rxStateMachine.GetMsgBody());
+                    LogUtility.LogUtility.LogFile("destination connected, submit " + Convert.ToString(m_rxStateMachine.GetMsgBody().Length), ModuleLogLevel);
+                    NonProprietarySegmentSubmitStream4Tx(m_rxStateMachine.GetMsgBody());
                     //NonProprietarySegmentTransmit();
                 }
-                else if (destinationSideSocket == null)
+                else if (m_destinationSideSocket == null)
                 {
-                    LogUtility.LogUtility.LogFile("destination is not connected and no attempt " + Convert.ToString(rxStateMachine.GetMsgBody().Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    LogUtility.LogUtility.LogFile("destination is not connected and no attempt " + Convert.ToString(m_rxStateMachine.GetMsgBody().Length), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
                     //ShutDownFlag = false;
                     byte []data = GetFirstBuffToTransmitDestination();
                     try
@@ -84,23 +84,27 @@ namespace ProxyLib
                     }
                     catch (Exception exc)
                     {
-                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     }
                 }
             }
             catch (Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProcessUpStreamDataKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Leaving ProcessUpStreamDataKind", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         public override void ProcessUpStreamMsgKind()
         {
         }
-        public override void ProcessDownStreamData(byte []data)
+        public override bool ProcessDownStreamData(byte[] data, bool isInvokedOnTransmit)
         {
-            ProprietarySegmentSubmitStream4Tx(data);
-            //ProprietarySegmentTransmit();
+            if (!isInvokedOnTransmit)
+            {
+                ProprietarySegmentSubmitStream4Tx(data);
+                return true;
+            }
+            return false;
         }
         void SendBadRequest()
         {
@@ -116,11 +120,11 @@ namespace ProxyLib
                 ProprietarySegmentSubmitStream4Tx(Encoding.ASCII.GetBytes("HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<html><head><title>400 Bad Request</title></head><body><div align=\"center\"><table border=\"0\" cellspacing=\"3\" cellpadding=\"3\" bgcolor=\"#C0C0C0\"><tr><td><table border=\"0\" width=\"500\" cellspacing=\"3\" cellpadding=\"3\"><tr><td bgcolor=\"#B2B2B2\"><p align=\"center\"><strong><font size=\"2\" face=\"Verdana\">400 Bad Request</font></strong></p></td></tr><tr><td bgcolor=\"#D1D1D1\"><font size=\"2\" face=\"Verdana\"> The proxy server could not understand the HTTP request!<br><br> Please contact your network administrator about this problem.</font></td></tr></table></center></td></tr></table></div></body></html>"));
                 //ProprietarySegmentTransmit();
 #endif
-                ErrorSent = true;
+                m_ErrorSent = true;
             }
             catch(Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
         }
         bool IsValidQuery()
@@ -138,7 +142,7 @@ namespace ProxyLib
                 }
                 catch(Exception exc)
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     SendBadRequest();
                     return true;
                 }
@@ -217,24 +221,24 @@ namespace ProxyLib
                 IPEndPoint DestinationEndPoint;
                 if (!IPAddress.TryParse(Host, out destIp))
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " trying to retrieve IP for " + Host, LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " trying to retrieve IP for " + Host, LogUtility.LogLevels.LEVEL_LOG_HIGH2);
                     DestinationEndPoint = new IPEndPoint(Dns.GetHostEntry(Host).AddressList[0], Port);
                 }
                 else
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " host name is the IP address " + Convert.ToString(destIp), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " host name is the IP address " + Convert.ToString(destIp), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
                     DestinationEndPoint = new IPEndPoint(destIp, Port);
                 }
-                destinationSideSocket = new Socket(DestinationEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                m_destinationSideSocket = new Socket(DestinationEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 //destinationSideSocket.LingerState.Enabled = true;
                 //destinationSideSocket.LingerState.LingerTime = 5000;
                 if (m_HeaderFields.ContainsKey("Proxy-Connection") && m_HeaderFields["Proxy-Connection"].ToLower().Equals("keep-alive"))
                 {
-                    destinationSideSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
+                    m_destinationSideSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
                 }
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Trying to connect destination " + Convert.ToString(DestinationEndPoint), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
-                destinationSideSocket.Connect(DestinationEndPoint);
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " destination connected ", LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Trying to connect destination " + Convert.ToString(DestinationEndPoint), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                m_destinationSideSocket.Connect(DestinationEndPoint);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " destination connected ", LogUtility.LogLevels.LEVEL_LOG_HIGH3);
                 m_OnceConnected = true;
                 QueueElement queueElement = new QueueElement();
                 if (m_HttpRequestType.ToUpper().Equals("CONNECT"))
@@ -251,7 +255,7 @@ namespace ProxyLib
                 }
                 else
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Submit to tx to destination ", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Submit to tx to destination ", ModuleLogLevel);
                     NonProprietarySegmentSubmitStream4Tx(Encoding.ASCII.GetBytes(RebuildQuery()));
                     //NonProprietarySegmentTransmit();
                 }
@@ -260,7 +264,7 @@ namespace ProxyLib
             }
             catch(Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 SendBadRequest();
                 return;
             }
@@ -312,7 +316,7 @@ namespace ProxyLib
                     }
                     catch(Exception exc)
                     {
-                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     }
                 }
             }

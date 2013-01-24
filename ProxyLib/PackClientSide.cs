@@ -14,10 +14,10 @@ namespace ProxyLib
 {
     public class PackClientSide : ClientSideProxy
     {
-        ReceiverPackLib.ReceiverPackLib receiverPackLib;
-        OnData onData;
-        OnMessageReadyToTx onMsgRead4Tx;
-        OnEnd onEnd;
+        ReceiverPackLib.ReceiverPackLib m_receiverPackLib;
+        OnData m_onData;
+        OnMessageReadyToTx m_onMsgRead4Tx;
+        OnEnd m_onEnd;
 
         public static new void InitGlobalObjects()
         {
@@ -28,15 +28,15 @@ namespace ProxyLib
         public PackClientSide(Socket clientSocket, IPEndPoint remoteEndPoint)
             : base(clientSocket, remoteEndPoint)
         {
-            onData = new OnData(OnDataReceived);
-            onMsgRead4Tx = new OnMessageReadyToTx(OnMsgRead4Tx);
-            onEnd = new OnEnd(OnTransationEnd);
-            receiverPackLib = new ReceiverPackLib.ReceiverPackLib(Id,onData, onEnd, null, onMsgRead4Tx);
+            m_onData = new OnData(OnDataReceived);
+            m_onMsgRead4Tx = new OnMessageReadyToTx(OnMsgRead4Tx);
+            m_onEnd = new OnEnd(OnTransationEnd);
+            m_receiverPackLib = new ReceiverPackLib.ReceiverPackLib(m_Id,m_onData, m_onEnd, null, m_onMsgRead4Tx);
         }
         void OnTransationEnd(object param)
         {
         }
-        void OnMsgRead4Tx(object param, byte[] msg)
+        void OnMsgRead4Tx(object param, byte[] msg,bool dummy)
         {
             LogUtility.LogUtility.LogFile("Entering OnMsgReady4Tx", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             ProprietarySegmentSubmitMsg4Tx(msg);
@@ -66,25 +66,25 @@ namespace ProxyLib
         }
         protected override uint GetSaved()
         {
-            if (receiverPackLib != null)
+            if (m_receiverPackLib != null)
             {
-                return receiverPackLib.GetTotalDataSaved();
+                return m_receiverPackLib.GetTotalDataSaved();
             }
             return base.GetSaved();
         }
         protected override void OnProprietarySegmentMsgReceived()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Entering OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Received message type " + Convert.ToString(rxStateMachine.GetKind()), ModuleLogLevel);
-                if (rxStateMachine.GetMsgBody() == null)
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Received message type " + Convert.ToString(m_rxStateMachine.GetKind()), ModuleLogLevel);
+                if (m_rxStateMachine.GetMsgBody() == null)
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " msg body is null", ModuleLogLevel);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " msg body is null", ModuleLogLevel);
                     return;
                 }
-                ReceivedMsgs++;
-                switch (rxStateMachine.GetKind())
+                m_ReceivedMsgs++;
+                switch (m_rxStateMachine.GetKind())
                 {
                     case (byte)PackEnvelopeKinds.PACK_ENVELOPE_DOWNSTREAM_DATA_KIND:
                         //receiverPackLib.OnDataByteMode(rxStateMachine.GetMsgBody(), 0);
@@ -95,24 +95,24 @@ namespace ProxyLib
                         EnterProprietaryLibCriticalArea();
                         try
                         {
-                            receiverPackLib.OnDataByteMode(rxStateMachine.GetMsgBody(), 0);
+                            m_receiverPackLib.OnDataByteMode(m_rxStateMachine.GetMsgBody(), 0);
                             LeaveProprietaryLibCriticalArea();
                         }
                         catch (Exception exc)
                         {
-                            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                             LeaveProprietaryLibCriticalArea();
                         }
-                        rxStateMachine.ClearMsgBody();
+                        m_rxStateMachine.ClearMsgBody();
                         break;
                 }
             }
             catch (Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 throw new Exception("Exception in OnProprietarySegmentMsgReceived", exc);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Leaving OnProprietarySegmentMsgReceived", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
         }
         string GenerateDebugInfo()
         {
@@ -122,40 +122,40 @@ namespace ProxyLib
             bool ProrietaryRxMutexAvailable = NonProprietaryRxMutexAvailable();
             bool clientMutexAvailable = ClientMutexAvailable();
             bool destinationMutexAvailable = DestinationMutexAvailable();
-            string debufInfo = Convert.ToString(Id) + " Received client " + Convert.ToString(ReceivedClient) + " Transmitted client " + Convert.ToString(TransmittedClient) + " NonProprietarySegmentRxInProgress " + Convert.ToString(NonProprietarySegmentRxInProgress) +
-                " NonProprietarySegmentTxInProgress " + Convert.ToString(NonProprietarySegmentTxInProgress) +
-                " ProprietarySegmentRxInProgress " + Convert.ToString(ProprietarySegmentRxInProgress) +
-                " ProprietarySegmentTxInProgress " + Convert.ToString(ProprietarySegmentTxInProgress) +
+            string debufInfo = Convert.ToString(m_Id) + " Received client " + Convert.ToString(m_ReceivedClient) + " Transmitted client " + Convert.ToString(m_TransmittedClient) + " m_NonProprietarySegmentRxInProgress " + Convert.ToString(m_NonProprietarySegmentRxInProgress) +
+                " m_NonProprietarySegmentTxInProgress " + Convert.ToString(m_NonProprietarySegmentTxInProgress) +
+                " m_ProprietarySegmentRxInProgress " + Convert.ToString(m_ProprietarySegmentRxInProgress) +
+                " m_ProprietarySegmentTxInProgress " + Convert.ToString(m_ProprietarySegmentTxInProgress) +
                 " NonProrietaryTxMutexAvailable " + Convert.ToString(NonProrietaryTxMutexAvailable) +
                 " ProrietaryTxMutexAvailable " + Convert.ToString(ProrietaryTxMutexAvailable) +
                 " NonProrietaryRxMutexAvailable " + Convert.ToString(NonProrietaryRxMutexAvailable) +
                 " ProrietaryRxMutexAvailable " + Convert.ToString(ProrietaryRxMutexAvailable) +
                 " clientMutexAvailable " + Convert.ToString(clientMutexAvailable) +
                 " destinationMutexAvailable " + Convert.ToString(destinationMutexAvailable) +
-                rxStateMachine.GetDebugInfo() + " " + txStateMachine.GetDebugInfo() + receiverPackLib.GetDebugInfo();
+                m_rxStateMachine.GetDebugInfo() + " " + m_txStateMachine.GetDebugInfo() + m_receiverPackLib.GetDebugInfo();
             return debufInfo;
         }
         public override object GetResults()
         {
             object[] res = new object[3];
-            res[0] = receiverPackLib.GetTotalData();
-            res[1] = receiverPackLib.GetTotalDataSaved();          
+            res[0] = m_receiverPackLib.GetTotalData();
+            res[1] = m_receiverPackLib.GetTotalDataSaved();          
             res[2] = GenerateDebugInfo();
             return res;
         }
         protected override void Disposing()
         {
-            if (onGotResults != null)
+            if (m_onGotResults != null)
             {
                 object[] res = new object[3];
-                res[0] = receiverPackLib.GetTotalData();
-                res[1] = receiverPackLib.GetTotalDataSaved();
+                res[0] = m_receiverPackLib.GetTotalData();
+                res[1] = m_receiverPackLib.GetTotalDataSaved();
                 res[2] = GenerateDebugInfo();
-                onGotResults(res);
+                m_onGotResults(res);
             }
             //LogUtility.LogUtility.LogFile(receiverPackLib.GetDebugInfo(), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
             //LogUtility.LogUtility.LogFile("TotalData " + Convert.ToString(receiverPackLib.GetTotalData()) + " TotalDataSaved " + Convert.ToString(receiverPackLib.GetTotalDataSaved()), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
-            receiverPackLib.OnDispose();
+            m_receiverPackLib.OnDispose();
             base.Disposing();
         }
 

@@ -178,11 +178,11 @@ namespace SenderPackLib
                     switch (match)
                     {
                         case false:
-                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " in non-match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
+                       //     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " in non-match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
                             receiverChunkIdx = (int)FindFirstMatchingChunk(predMsg, senderChunk, senderHint);
                             if (receiverChunkIdx != predMsg.Count)
                             {
-                                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " match " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)receiverChunkIdx].chunk)), ModuleLogLevel);
+                         //       LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " match " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)receiverChunkIdx].chunk)), ModuleLogLevel);
                                 match = true;
                                 firstReceiverIdx = (uint)receiverChunkIdx;
                                 firstSenderIdx = (uint)senderChunkIdx;
@@ -197,7 +197,7 @@ namespace SenderPackLib
                             }
                             break;
                         case true:
-                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "in match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
+                      //      LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "in match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
                             if ((senderChunk != PackChunking.chunkCode(0, PackChunking.chunkToLen(predMsg[receiverChunkIdx].chunk))) ||
                                 (senderHint != predMsg[receiverChunkIdx].hint))
                             {
@@ -226,7 +226,7 @@ namespace SenderPackLib
                             }
                             break;
                     }
-                    LogUtility.LogUtility.LogFile("Sender's offset " + Convert.ToString(offset), ModuleLogLevel);
+                    //LogUtility.LogUtility.LogFile("Sender's offset " + Convert.ToString(offset), ModuleLogLevel);
                     offset += (int)PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx]);
                     senderChunkIdx++;
                 }
@@ -252,7 +252,7 @@ namespace SenderPackLib
                 if ((PackChunking.chunkCode(0, PackChunking.chunkToLen(chunksList[(int)idx].chunk)) == chunk) &&
                     (chunksList[(int)idx].hint == hint))
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "match " + Convert.ToString(idx), ModuleLogLevel);
+                    //LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "match " + Convert.ToString(idx), ModuleLogLevel);
                     break;
                 }
             }
@@ -291,7 +291,7 @@ namespace SenderPackLib
                     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sha mismatch " + Convert.ToString(idx) + " " + Convert.ToString(senderFirstIdx), ModuleLogLevel);
                     return idx;
                 }
-                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sha match " + Convert.ToString(idx) + " " + Convert.ToString(senderFirstIdx), ModuleLogLevel);
+                //LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sha match " + Convert.ToString(idx) + " " + Convert.ToString(senderFirstIdx), ModuleLogLevel);
                 senderFirstIdx++;
                 receiverFirstIdx++;
             }
@@ -310,18 +310,18 @@ namespace SenderPackLib
         private StreamChunckingLib.PackChunking packChunking;
 
         // for statistics & logging only
-        uint TotalDataReceived;
-        uint TotalDataSent;
-        uint TotalSavedData;
-        uint TotalPreSaved;
-        uint TotalPostSaved;
-        uint TotalRawSent;
-        uint PredMsgReceived;
-        uint PredAckMsgSent;
-        uint DataMsgSent;
-        EndPoint Id;
+        uint m_TotalDataReceived;
+        uint m_TotalDataSent;
+        uint m_TotalSavedData;
+        //uint m_TotalPreSaved;
+        //uint m_TotalPostSaved;
+        //uint m_TotalRawSent;
+        uint m_PredMsgReceived;
+        uint m_PredAckMsgSent;
+        uint m_DataMsgSent;
+        EndPoint m_Id;
 
-        object libMutex;
+        object m_libMutex;
 #if false
         static object predMsgListMutex = new object();
         static TimeSpan timeDelta = new TimeSpan(0, 0, 10, 0, 0);
@@ -491,43 +491,43 @@ namespace SenderPackLib
             m_PredMsg = null;
 #endif
             packChunking = new PackChunking(8);
-            TotalDataReceived = 0;
-            TotalDataSent = 0;
-            TotalSavedData = 0;
-            TotalRawSent = 0;
-            PredMsgReceived = 0;
-            PredAckMsgSent = 0;
-            DataMsgSent = 0;
-            libMutex = new object();
+            m_TotalDataReceived = 0;
+            m_TotalDataSent = 0;
+            m_TotalSavedData = 0;
+            //m_TotalRawSent = 0;
+            m_PredMsgReceived = 0;
+            m_PredAckMsgSent = 0;
+            m_DataMsgSent = 0;
+            m_libMutex = new object();
             LogUtility.LogUtility.LogFile("SenderLib:InitInstance", LogUtility.LogLevels.LEVEL_LOG_HIGH);
         }
 
         public uint GetTotalAdded()
         {
-            return TotalDataReceived;
+            return m_TotalDataReceived;
         }
         public uint GetTotalSent()
         {
-            return TotalDataSent;
+            return m_TotalDataSent;
         }
         public uint GetTotalSavedData()
         {
-            return TotalSavedData;
+            return m_TotalSavedData;
         }
-
+#if false
         public uint GetTotalPreSavedData()
         {
-            return TotalPreSaved;
+            return m_TotalPreSaved;
         }
 
         public uint GetTotalPostSavedData()
         {
-            return TotalPostSaved;
+            return m_TotalPostSaved;
         }
-
+#endif
         public SenderPackLib(byte[] data) : base(null)
         {
-            Id = new IPEndPoint(0,0);
+            m_Id = new IPEndPoint(0,0);
             InitInstance(data);
         }
 
@@ -536,58 +536,78 @@ namespace SenderPackLib
             int offset;
             byte []msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)data.Length, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
             data.CopyTo(msg, offset);
-            onMessageReadyToTx(onTxMessageParam, msg);
-            TotalDataSent += (uint)data.Length;
-            TotalRawSent += (uint)data.Length;
-            DataMsgSent++;
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " PreSaved " + Convert.ToString(TotalPreSaved) + " Saved " + Convert.ToString(TotalSavedData) + " PostSaved " + Convert.ToString(TotalPostSaved) + " Received from server " + Convert.ToString(TotalDataReceived) + " Total sent to client " + Convert.ToString(TotalDataSent) + " Sent raw " + Convert.ToString(TotalRawSent), ModuleLogLevel);
+            onMessageReadyToTx(onTxMessageParam, msg,false);
+            m_TotalDataSent += (uint)data.Length;
+            //m_TotalRawSent += (uint)data.Length;
+            m_DataMsgSent++;
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + /*" PreSaved " + Convert.ToString(m_TotalPreSaved) +*/ " Saved " + Convert.ToString(m_TotalSavedData) /*+ " PostSaved " + Convert.ToString(m_TotalPostSaved)*/ + " Received from server " + Convert.ToString(m_TotalDataReceived) + " Total sent to client " + Convert.ToString(m_TotalDataSent) /*+ " Sent raw " + Convert.ToString(m_TotalRawSent)*/, ModuleLogLevel);
         }
 
-        void SendChunksData(byte []data,int count)
+        void SendChunksData(byte []data,int count,bool submit2Head)
         {
             int idx,offset_in_msg;
             byte[] msg;
+            byte Msgkind;
 
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Sending pre-PredAck DATA " + Convert.ToString(count), ModuleLogLevel);
-            msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)count, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset_in_msg);
+            if (submit2Head)
+            {
+                Msgkind = (byte)PackMsg.PackMsg.MsgKind_e.PACK_FINALLY_PROCESSED_DATA_MSG_KIND;
+            }
+            else
+            {
+                Msgkind = (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND;
+            }
+
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Sending pre-PredAck DATA " + Convert.ToString(count), ModuleLogLevel);
+            msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)count, 0, Msgkind, out offset_in_msg);
             for (idx = 0; idx < count; idx++)
             {
                 msg[idx + offset_in_msg] = data[idx];
             }
-            onMessageReadyToTx(onTxMessageParam, msg);
-            TotalDataSent += (uint)count;
-            TotalPreSaved += (uint)count;
-            DataMsgSent++;
+            onMessageReadyToTx(onTxMessageParam, msg, submit2Head);
+            m_TotalDataSent += (uint)count;
+            //m_TotalPreSaved += (uint)count;
+            m_DataMsgSent++;
         }
 
-        public void AddData(byte[] data)
+        public bool AddData(byte[] data,bool invokedOnTransmit)
         {
             int offset;
-            //int receiverChunkIdx;
+            bool ret = true;
             byte[] msg;
-            Monitor.Enter(libMutex);
-            uint offset_in_stream = TotalDataSent + TotalSavedData;
+            Monitor.Enter(m_libMutex);
+            uint offset_in_stream = m_TotalDataSent + m_TotalSavedData;
             
-            TotalDataReceived += (uint)data.Length;
-            LogUtility.LogUtility.LogFile("AddData: " + Convert.ToString(data.Length) + " bytes received", ModuleLogLevel);
+            m_TotalDataReceived += (uint)data.Length;
+            LogUtility.LogUtility.LogFile("AddData: " + Convert.ToString(data.Length) + " bytes received, isInvokedOnTx " + Convert.ToString(invokedOnTransmit), ModuleLogLevel);
             
             LongestMatch longestMatch = new LongestMatch();
-            List<List<ChunkMetaData>> predMsgs = GetPredMsg4IpAddress(((IPEndPoint)Id).Address);
+            List<List<ChunkMetaData>> predMsgs = GetPredMsg4IpAddress(((IPEndPoint)m_Id).Address);
 
             if (predMsgs != null)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " AddData: process " + Convert.ToString(predMsgs.Count) + " chains total received " + Convert.ToString(TotalDataReceived) + " total sent " + Convert.ToString(TotalDataSent) + " total saved " + Convert.ToString(TotalSavedData) + " data len " + Convert.ToString(data.Length), ModuleLogLevel);
-                MatchStateMachine matchStateMachine = new MatchStateMachine(Id, longestMatch, packChunking, data, predMsgs);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " AddData: process " + Convert.ToString(predMsgs.Count) + " chains total received " + Convert.ToString(m_TotalDataReceived) + " total sent " + Convert.ToString(m_TotalDataSent) + " total saved " + Convert.ToString(m_TotalSavedData) + " data len " + Convert.ToString(data.Length), ModuleLogLevel);
+                MatchStateMachine matchStateMachine = new MatchStateMachine(m_Id, longestMatch, packChunking, data, predMsgs);
                 matchStateMachine.Run();
             }
             
             if (!longestMatch.IsMatchFound())
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " no match at all", ModuleLogLevel);
-                ForwardData(data);
-                Monitor.Exit(libMutex);
-                return;
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " no match at all", ModuleLogLevel);
+
+                if (!invokedOnTransmit)
+                {
+                    ForwardData(data);
+                }
+                else
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " not submitting - tx case", ModuleLogLevel);
+                    ret = false;
+                }
+                Monitor.Exit(m_libMutex);
+                return ret;
             }
+#if false
             if (longestMatch.GetPrecedingBytesCount() > 0)
             {
                 SendChunksData(data, (int)longestMatch.GetPrecedingBytesCount());
@@ -596,34 +616,99 @@ namespace SenderPackLib
             byte []buff = PackMsg.PackMsg.AllocateMsgAndBuildHeader(GetPredictionAckMessageSize((uint)longestMatch.GetLongestChunkCount()), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_PRED_ACK_MSG_KIND, out offset);
             EncodePredictionAckMessage(buff, offset, longestMatch.GetPredMsg(), (uint)longestMatch.GetLongestChunkCount(), longestMatch.GetFirstReceiverChunkIdx());
             onMessageReadyToTx(onTxMessageParam, buff);
-            PredAckMsgSent++;
+            m_PredAckMsgSent++;
             int remainder = longestMatch.GetRemainder(data.Length);
             int alreadySent = (int)longestMatch.GetPrecedingBytesCount() + (int)longestMatch.GetLongestChainLen();
             if ((alreadySent + remainder) != data.Length)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " something wrong: prec+chainLen+remainder " + Convert.ToString(longestMatch.GetPrecedingBytesCount()) + " " + Convert.ToString(longestMatch.GetLongestChainLen()) + " " + Convert.ToString(remainder) + " does not equal data.length " + Convert.ToString(data.Length), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " something wrong: prec+chainLen+remainder " + Convert.ToString(longestMatch.GetPrecedingBytesCount()) + " " + Convert.ToString(longestMatch.GetLongestChainLen()) + " " + Convert.ToString(remainder) + " does not equal data.length " + Convert.ToString(data.Length), ModuleLogLevel);
             }
             
             if (remainder > 0)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sending pos-PredAck data " + Convert.ToString(remainder), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sending pos-PredAck data " + Convert.ToString(remainder), ModuleLogLevel);
                 msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)remainder, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
                 for (int i = alreadySent; i < data.Length; i++)
                 {
                     msg[(i - alreadySent) + offset] = data[i];
                 }
                 onMessageReadyToTx(onTxMessageParam, msg);
-                TotalDataSent += (uint)remainder;
-                TotalPostSaved += (uint)remainder;
-                DataMsgSent++;
+                m_TotalDataSent += (uint)remainder;
+                m_TotalPostSaved += (uint)remainder;
+                m_DataMsgSent++;
             }
-            longestMatch.GetPredMsg().RemoveRange((int)longestMatch.GetFirstReceiverChunkIdx(), (int)longestMatch.GetLongestChunkCount());
-#if false
-            longestMatch.GetPredMsg()[(int)longestMatch.GetLongestChainIdx()].chunkMetaData.RemoveRange((int)longestMatch.GetFirstReceiverChunkIdx(), (int)longestMatch.GetLongestChainLen());
-            longestMatch.GetPredMsg()[(int)longestMatch.GetLongestChainIdx()].chunkMetaData.RemoveRange(0, (int)longestMatch.GetFirstReceiverChunkIdx());
+#else
+            if (invokedOnTransmit)
+            {
+                m_TotalDataSent -= (uint)data.Length;
+                //m_TotalPreSaved -= (uint)count;
+                m_DataMsgSent--;
+                int remainder = longestMatch.GetRemainder(data.Length);
+                int alreadySent = (int)longestMatch.GetPrecedingBytesCount() + (int)longestMatch.GetLongestChainLen();
+                if ((alreadySent + remainder) != data.Length)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " something wrong: prec+chainLen+remainder " + Convert.ToString(longestMatch.GetPrecedingBytesCount()) + " " + Convert.ToString(longestMatch.GetLongestChainLen()) + " " + Convert.ToString(remainder) + " does not equal data.length " + Convert.ToString(data.Length), ModuleLogLevel);
+                }
+
+                if (remainder > 0)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sending pos-PredAck data " + Convert.ToString(remainder), ModuleLogLevel);
+                    msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)remainder, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_FINALLY_PROCESSED_DATA_MSG_KIND, out offset);
+                    for (int i = alreadySent; i < data.Length; i++)
+                    {
+                        msg[(i - alreadySent) + offset] = data[i];
+                    }
+                    onMessageReadyToTx(onTxMessageParam, msg, invokedOnTransmit);
+                    m_TotalDataSent += (uint)remainder;
+                  //  m_TotalPostSaved += (uint)remainder;
+                    m_DataMsgSent++;
+                }
+                byte[] buff = PackMsg.PackMsg.AllocateMsgAndBuildHeader(GetPredictionAckMessageSize((uint)longestMatch.GetLongestChunkCount()), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_PRED_ACK_MSG_KIND, out offset);
+                EncodePredictionAckMessage(buff, offset, longestMatch.GetPredMsg(), (uint)longestMatch.GetLongestChunkCount(), longestMatch.GetFirstReceiverChunkIdx());
+                onMessageReadyToTx(onTxMessageParam, buff, invokedOnTransmit);
+                m_PredAckMsgSent++;
+                if (longestMatch.GetPrecedingBytesCount() > 0)
+                {
+                    SendChunksData(data, (int)longestMatch.GetPrecedingBytesCount(), invokedOnTransmit);
+                }
+            }
+            else
+            {
+                if (longestMatch.GetPrecedingBytesCount() > 0)
+                {
+                    SendChunksData(data, (int)longestMatch.GetPrecedingBytesCount(), invokedOnTransmit);
+                }
+
+                byte[] buff = PackMsg.PackMsg.AllocateMsgAndBuildHeader(GetPredictionAckMessageSize((uint)longestMatch.GetLongestChunkCount()), 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_PRED_ACK_MSG_KIND, out offset);
+                EncodePredictionAckMessage(buff, offset, longestMatch.GetPredMsg(), (uint)longestMatch.GetLongestChunkCount(), longestMatch.GetFirstReceiverChunkIdx());
+                onMessageReadyToTx(onTxMessageParam, buff, invokedOnTransmit);
+                m_PredAckMsgSent++;
+                int remainder = longestMatch.GetRemainder(data.Length);
+                int alreadySent = (int)longestMatch.GetPrecedingBytesCount() + (int)longestMatch.GetLongestChainLen();
+                if ((alreadySent + remainder) != data.Length)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " something wrong: prec+chainLen+remainder " + Convert.ToString(longestMatch.GetPrecedingBytesCount()) + " " + Convert.ToString(longestMatch.GetLongestChainLen()) + " " + Convert.ToString(remainder) + " does not equal data.length " + Convert.ToString(data.Length), ModuleLogLevel);
+                }
+
+                if (remainder > 0)
+                {
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sending pos-PredAck data " + Convert.ToString(remainder), ModuleLogLevel);
+                    msg = PackMsg.PackMsg.AllocateMsgAndBuildHeader((uint)remainder, 0, (byte)PackMsg.PackMsg.MsgKind_e.PACK_DATA_MSG_KIND, out offset);
+                    for (int i = alreadySent; i < data.Length; i++)
+                    {
+                        msg[(i - alreadySent) + offset] = data[i];
+                    }
+                    onMessageReadyToTx(onTxMessageParam, msg, invokedOnTransmit);
+                    m_TotalDataSent += (uint)remainder;
+                    //m_TotalPostSaved += (uint)remainder;
+                    m_DataMsgSent++;
+                }
+            }
 #endif
-            Monitor.Exit(libMutex);
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " PreSaved " + Convert.ToString(TotalPreSaved) + " Saved " + Convert.ToString(TotalSavedData) + " PostSaved " + Convert.ToString(TotalPostSaved) + " Received from server " + Convert.ToString(TotalDataReceived) + " Total sent to client " + Convert.ToString(TotalDataSent) + " Sent raw " + Convert.ToString(TotalRawSent), ModuleLogLevel);
+            longestMatch.GetPredMsg().RemoveRange((int)longestMatch.GetFirstReceiverChunkIdx(), (int)longestMatch.GetLongestChunkCount());
+            Monitor.Exit(m_libMutex);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) /*+ " PreSaved " + Convert.ToString(m_TotalPreSaved)*/ + " Saved " + Convert.ToString(m_TotalSavedData) /*+ " PostSaved " + Convert.ToString(m_TotalPostSaved)*/ + " Received from server " + Convert.ToString(m_TotalDataReceived) + " Total sent to client " + Convert.ToString(m_TotalDataSent) /*+ " Sent raw " + Convert.ToString(m_TotalRawSent)*/, ModuleLogLevel);
+            return ret;
         }
 
         public void ClearData()
@@ -631,18 +716,10 @@ namespace SenderPackLib
             LogUtility.LogUtility.LogFile("SenderLib:ClearData", LogUtility.LogLevels.LEVEL_LOG_HIGH);
         }
 
-        public SenderPackLib(byte[] data, OnMessageReadyToTx onMsgReadyToTx) : base(onMsgReadyToTx)
-        {
-            Id = new IPEndPoint(0,0);
-            ChunkChainDataTypes.OnMessageReceived onPredMsg = new ChunkChainDataTypes.OnMessageReceived(ProcessPredMsg);
-            base.SetCallback((int)PackMsg.PackMsg.MsgKind_e.PACK_PRED_MSG_KIND, onPredMsg);
-            InitInstance(data);
-        }
-
         public SenderPackLib(EndPoint id, OnMessageReadyToTx onMsgReadyToTx)
             : base(onMsgReadyToTx)
         {
-            Id = id;
+            m_Id = id;
             ChunkChainDataTypes.OnMessageReceived onPredMsg = new ChunkChainDataTypes.OnMessageReceived(ProcessPredMsg);
             base.SetCallback((int)PackMsg.PackMsg.MsgKind_e.PACK_PRED_MSG_KIND, onPredMsg);
             InitInstance(null);
@@ -708,26 +785,26 @@ namespace SenderPackLib
                     break;
                 }
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " sending PRED ACK saved now " + Convert.ToString(thisTimeSaved) + " chunks " + Convert.ToString((chunkCounter - firstChunk)), ModuleLogLevel);
-            TotalSavedData += (uint)thisTimeSaved;
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " sending PRED ACK saved now " + Convert.ToString(thisTimeSaved) + " chunks " + Convert.ToString((chunkCounter - firstChunk)), ModuleLogLevel);
+            m_TotalSavedData += (uint)thisTimeSaved;
         }
         
         byte []ProcessPredMsg(byte []packet,int offset,byte Flags,int room_space)
         {
             List<List<ChunkMetaData>> chunkMetaDataList;
             uint decodedOffsetInStream;
-            Monitor.Enter(libMutex);
-            uint offset_in_stream = TotalDataSent + TotalSavedData;
-            PredMsgReceived++;
+            Monitor.Enter(m_libMutex);
+            uint offset_in_stream = m_TotalDataSent + m_TotalSavedData;
+            m_PredMsgReceived++;
             LogUtility.LogUtility.LogFile("PRED Message", ModuleLogLevel);
             chunkMetaDataList = DecodePredictionMessage(packet, offset, out decodedOffsetInStream);
-            LogUtility.LogUtility.LogFile("chainOffset " + Convert.ToString(decodedOffsetInStream) + " TotalSent " + Convert.ToString(TotalDataSent) + " TotalSaved " + Convert.ToString(TotalSavedData), ModuleLogLevel);
+            LogUtility.LogUtility.LogFile("chainOffset " + Convert.ToString(decodedOffsetInStream) + " TotalSent " + Convert.ToString(m_TotalDataSent) + " TotalSaved " + Convert.ToString(m_TotalSavedData), ModuleLogLevel);
             if (chunkMetaDataList == null)
             {
-                Monitor.Exit(libMutex);
+                Monitor.Exit(m_libMutex);
                 return null;
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " processing " + Convert.ToString(chunkMetaDataList.Count) + " chains, offset " + Convert.ToString(decodedOffsetInStream) + " offset in stream " + Convert.ToString(offset_in_stream), ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " processing " + Convert.ToString(chunkMetaDataList.Count) + " chains, offset " + Convert.ToString(decodedOffsetInStream) + " offset in stream " + Convert.ToString(offset_in_stream), ModuleLogLevel);
 #if false            
             for (int i = 0; i < chunkMetaDataAndIdList.Count;i++)
             {
@@ -763,9 +840,9 @@ namespace SenderPackLib
             LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " leavingProcessPredMsg", ModuleLogLevel);
             predMsg = newChunkMetaDataAndIdList;
 #else
-            AddPredMsg(((IPEndPoint)Id).Address, chunkMetaDataList);
+            AddPredMsg(((IPEndPoint)m_Id).Address, chunkMetaDataList);
 #endif
-            Monitor.Exit(libMutex);
+            Monitor.Exit(m_libMutex);
             return null;
         }
         public byte[] SenderOnData(byte[] packet,int room_space)
@@ -778,7 +855,7 @@ namespace SenderPackLib
 
             if ((rc = PackMsg.PackMsg.DecodeMsg(packet, out DataSize, out Flags,out MsgKind, out offset)) != 0)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Message cannot be decoded", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Message cannot be decoded", LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 return null;
             }
             switch (MsgKind)
@@ -794,7 +871,7 @@ namespace SenderPackLib
         {
             string debugInfo = "";
 
-            debugInfo += " TotalDataReceived " + Convert.ToString(TotalDataReceived) + " TotalSent " + Convert.ToString(TotalDataSent) + " TotalSaved " + Convert.ToString(TotalSavedData) + " TotalPreSaved " + Convert.ToString(TotalPreSaved) + " TotalPostSaved " + Convert.ToString(TotalPostSaved) + " PredMsgReceived " + Convert.ToString(PredMsgReceived) + " PredAckSent" + Convert.ToString(PredAckMsgSent) + " DataMsgSent " + Convert.ToString(DataMsgSent) + " " + base.GetDebugInfo();
+            debugInfo += " TotalDataReceived " + Convert.ToString(m_TotalDataReceived) + " TotalSent " + Convert.ToString(m_TotalDataSent) + " TotalSaved " + Convert.ToString(m_TotalSavedData) /*+ " TotalPreSaved " + Convert.ToString(m_TotalPreSaved) + " TotalPostSaved " + Convert.ToString(m_TotalPostSaved)*/ + " PredMsgReceived " + Convert.ToString(m_PredMsgReceived) + " PredAckSent" + Convert.ToString(m_PredAckMsgSent) + " DataMsgSent " + Convert.ToString(m_DataMsgSent) + " " + base.GetDebugInfo();
             return debugInfo;
         }
     }

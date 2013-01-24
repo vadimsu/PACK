@@ -8,7 +8,7 @@ namespace Stream2Message
 {
     public class Stream2Message
     {
-        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
+        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_HIGH;
         enum Receiver_State_e
         {
             RECEIVER_HEADER_STATE,
@@ -125,7 +125,7 @@ namespace Stream2Message
                             returnMsg = msgHandlers[mMsgKind](mBuff, 0,mFlags, room_space);
                             if (returnMsg != null)
                             {
-                                onMessageReadyToTx(onTxMessageParam, returnMsg);
+                                onMessageReadyToTx(onTxMessageParam, returnMsg,false);
                             }
                             InitRxStateMachine();
                         }

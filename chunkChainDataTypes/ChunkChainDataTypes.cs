@@ -43,7 +43,7 @@ namespace ChunkChainDataTypes
         public uint firstChunkIdx;
     }
     public delegate void OnData(byte []data,int offset,int length);
-    public delegate void OnMessageReadyToTx(object param,byte []msg);
+    public delegate void OnMessageReadyToTx(object param,byte []msg,bool submit2Head);
     public delegate byte []OnMessageReceived(byte []buffer,int offset,byte Flags,int room_space);
     public delegate void OnEnd(object param);
 }

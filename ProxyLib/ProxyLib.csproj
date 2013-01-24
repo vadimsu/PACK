@@ -65,6 +65,10 @@
       <Project>{436F09D7-E24C-49DA-A036-4C5EE7C436AE}</Project>
       <Name>MyMemoryStream</Name>
     </ProjectReference>
+    <ProjectReference Include="..\PackMsg\PackMsg.csproj">
+      <Project>{61AB1E5E-4099-46CE-AFFB-1E5446DF43F2}</Project>
+      <Name>PackMsg</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PerformanceMonitoring\PerformanceMonitoring.csproj">
       <Project>{4D563147-F26E-4F88-A558-2BF9469EF27D}</Project>
       <Name>PerformanceMonitoring</Name>

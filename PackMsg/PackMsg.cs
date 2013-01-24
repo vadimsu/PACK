@@ -17,6 +17,7 @@ namespace PackMsg
             PACK_PRED_MSG_KIND,
             PACK_PRED_ACK_MSG_KIND,
             PACK_DATA_MSG_KIND,
+            PACK_FINALLY_PROCESSED_DATA_MSG_KIND,
             PACK_MSG_NUMBER
         };
 
@@ -51,6 +52,7 @@ namespace PackMsg
             switch (MsgKind)
             {
                 case (byte)MsgKind_e.PACK_DATA_MSG_KIND:
+                case (byte)MsgKind_e.PACK_FINALLY_PROCESSED_DATA_MSG_KIND:
                 case (byte)MsgKind_e.PACK_PRED_ACK_MSG_KIND:
                 case (byte)MsgKind_e.PACK_PRED_MSG_KIND:
                     break;

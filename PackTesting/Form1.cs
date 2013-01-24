@@ -53,9 +53,9 @@ namespace PackTesting
                 listView1.Items.Add(new ListViewItem("FoundEqualChains " + Convert.ToString(ChunkAndChainFileManager.ChunkAndChainFileManager.FoundEqualChains)));
 
                 listView1.Items.Add(new ListViewItem("ReceiverPackLib "));
-                listView1.Items.Add(new ListViewItem("PredMsgSent " + Convert.ToString(ReceiverPackLib.ReceiverPackLib.PredMsgSent)));
-                listView1.Items.Add(new ListViewItem("ChunksProcessed " + Convert.ToString(ReceiverPackLib.ReceiverPackLib.ChunksProcessed)));
-                listView1.Items.Add(new ListViewItem("PredAckMsgReceived " + Convert.ToString(ReceiverPackLib.ReceiverPackLib.PredAckMsgReceived)));
+                listView1.Items.Add(new ListViewItem("PredMsgSent " + Convert.ToString(ReceiverPackLib.ReceiverPackLib.m_PredMsgSent)));
+                listView1.Items.Add(new ListViewItem("ChunksProcessed " + Convert.ToString(ReceiverPackLib.ReceiverPackLib.m_ChunksProcessed)));
+                listView1.Items.Add(new ListViewItem("PredAckMsgReceived " + Convert.ToString(ReceiverPackLib.ReceiverPackLib.m_PredAckMsgReceived)));
             }
         }
 
@@ -112,7 +112,7 @@ namespace PackTesting
 
                 ReceiverPackLib.ReceiverPackLib receiverPackLib = new ReceiverPackLib.ReceiverPackLib(onData,onEnd,null);
                 SenderPackLib.SenderPackLib senderPackLib = new SenderPackLib.SenderPackLib(buf);
-                senderPackLib.AddData(buf);
+                senderPackLib.AddData(buf,false);
 #if false
                 senderPackLib.AddLast();
                 bool SameChunk;

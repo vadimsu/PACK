@@ -104,7 +104,7 @@ namespace MyMemoryStream
             }
             catch (Exception exc)
             {
-                memoryStream.Position = current_position;
+                //memoryStream.Position = current_position;
                 LogUtility.LogUtility.LogFile("EXCEPTION: position " + Convert.ToString(position) + " Length " + Convert.ToString(memoryStream.Length) + " pos " + Convert.ToString(memoryStream.Position),LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 return null;
             }

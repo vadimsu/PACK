@@ -335,37 +335,59 @@ namespace PackSenderProxyEmulator
         }
         public void ProcessStatistics(object[] arg)
         {
-            object[] res = (object [])arg;
-            Monitor.Enter(m_StatisticsLock);
-            totalReceived += (uint)res[1];
-            totalSent += (uint)res[2];
-            totalSaved += (uint)res[3];
-            if (totalSent > 0)
+            try
             {
-                savedPercentage = (double)totalSaved / (double)totalSent;
+                object[] res = (object[])arg;
+                Monitor.Enter(m_StatisticsLock);
+                totalReceived += (uint)res[1];
+                totalSent += (uint)res[2];
+                totalSaved += (uint)res[3];
+                if (totalReceived > 0)
+                {
+                    savedPercentage = (double)totalSaved / (double)totalReceived;
+                }
+                //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
+                m_NotifyIcon.BalloonTipText = "Total: saved " + Convert.ToString(totalSaved) + " " + Convert.ToString(savedPercentage * 100) + "% Saved " + Convert.ToString(res[3] + " Total received " + Convert.ToString(totalReceived) + " Total sent " + Convert.ToString(totalSent));
+                m_NotifyIcon.ShowBalloonTip(1000);
+                Monitor.Exit(m_StatisticsLock);
             }
-            //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
-            m_NotifyIcon.BalloonTipText = "Total: saved " + Convert.ToString(totalSaved) + " " + Convert.ToString(savedPercentage*100) + "% Saved " + Convert.ToString(res[3] + " Total received " + Convert.ToString(totalReceived) + " Total sent " + Convert.ToString(totalSent));
-            m_NotifyIcon.ShowBalloonTip(1000);
-            Monitor.Exit(m_StatisticsLock);
+            catch (Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
 
         void ResetStatistics(object sender, EventArgs e)
         {
-            Monitor.Enter(m_StatisticsLock);
-            totalReceived = 0;
-            totalSent = 0;
-            totalSaved = 0;
-            savedPercentage = 0;
-            //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
-            Monitor.Exit(m_StatisticsLock);
+            try
+            {
+                Monitor.Enter(m_StatisticsLock);
+                totalReceived = 0;
+                totalSent = 0;
+                totalSaved = 0;
+                savedPercentage = 0;
+                //m_NotifyIcon.BalloonTipText = "Total: rx " + Convert.ToString(totalReceived) + " tx " + Convert.ToString(totalSent) + " saved " + Convert.ToString(totalSaved) + " Received " + Convert.ToString(res[1]) + " Sent " + Convert.ToString(res[2]) + " Saved " + Convert.ToString(res[3]);
+                Monitor.Exit(m_StatisticsLock);
+            }
+            catch(Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
         void OnGotResults(object results)
         {
          //   statistics1.ProcessStatistics(results);
-            object[] arg = new object[1];
-            arg[0] = results;
-            Invoke(m_UpdateStatisticControls,arg);
+            return;
+            try
+            {
+                object[] arg = new object[1];
+                arg[0] = results;
+                Invoke(m_UpdateStatisticControls, arg);
+            }
+            catch (Exception exc)
+            {
+                MessageBox.Show(exc.Message);
+            }
         }
 
         private void buttonRefreshStatistics_Click(object sender, EventArgs e)

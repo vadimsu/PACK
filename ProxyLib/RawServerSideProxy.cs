@@ -25,35 +25,35 @@ namespace ProxyLib
             try
             {
                 IPEndPoint DestinationEndPoint = remoteEndPoint;
-                destinationSideSocket = new Socket(DestinationEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                m_destinationSideSocket = new Socket(DestinationEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 //destinationSideSocket.LingerState.Enabled = true;
                 //destinationSideSocket.LingerState.LingerTime = 10000;
-                destinationSideSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
+                m_destinationSideSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
                 LogUtility.LogUtility.LogFile("Trying to connect destination " + Convert.ToString(DestinationEndPoint), ModuleLogLevel);
-                destinationSideSocket.Connect(DestinationEndPoint);
+                m_destinationSideSocket.Connect(DestinationEndPoint);
                 LogUtility.LogUtility.LogFile("destination connected ", ModuleLogLevel);
             }
             catch (Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 return null;
             }
-            return rxStateMachine.GetMsgBody();
+            return m_rxStateMachine.GetMsgBody();
         }
         public override void ProcessUpStreamDataKind()
         {
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Entering ProcessUpStreamDataKind", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Entering ProcessUpStreamDataKind", ModuleLogLevel);
             try
             {
-                if ((destinationSideSocket != null) && (destinationSideSocket.Connected))
+                if ((m_destinationSideSocket != null) && (m_destinationSideSocket.Connected))
                 {
-                    LogUtility.LogUtility.LogFile("destination connected, submit " + Convert.ToString(rxStateMachine.GetMsgBody().Length), ModuleLogLevel);
-                    NonProprietarySegmentSubmitStream4Tx(rxStateMachine.GetMsgBody());
+                    LogUtility.LogUtility.LogFile("destination connected, submit " + Convert.ToString(m_rxStateMachine.GetMsgBody().Length), ModuleLogLevel);
+                    NonProprietarySegmentSubmitStream4Tx(m_rxStateMachine.GetMsgBody());
                     //NonProprietarySegmentTransmit();
                 }
-                else if (destinationSideSocket == null)
+                else if (m_destinationSideSocket == null)
                 {
-                    LogUtility.LogUtility.LogFile("destination is not connected and no attempt " + Convert.ToString(rxStateMachine.GetMsgBody().Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                    LogUtility.LogUtility.LogFile("destination is not connected and no attempt " + Convert.ToString(m_rxStateMachine.GetMsgBody().Length), LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     //ShutDownFlag = false;
                     byte []data = GetFirstBuffToTransmitDestination();
                     try
@@ -66,23 +66,27 @@ namespace ProxyLib
                     }
                     catch (Exception exc)
                     {
-                        LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     }
                 }
             }
             catch (Exception exc)
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " Leaving ProcessUpStreamDataKind", ModuleLogLevel);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Leaving ProcessUpStreamDataKind", ModuleLogLevel);
         }
         public override void ProcessUpStreamMsgKind()
         {
         }
-        public override void ProcessDownStreamData(byte []data)
+        public override bool ProcessDownStreamData(byte[] data, bool isInvokedOnTransmit)
         {
-            ProprietarySegmentSubmitStream4Tx(data);
-            //ProprietarySegmentTransmit();
+            if (!isInvokedOnTransmit)
+            {
+                ProprietarySegmentSubmitStream4Tx(data);
+                return true;
+            }
+            return false;
         }
     }
 }
