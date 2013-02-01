@@ -71,7 +71,7 @@ namespace ProxyLib
                 }
                 else if (m_destinationSideSocket == null)
                 {
-                    LogUtility.LogUtility.LogFile("destination is not connected and no attempt " + Convert.ToString(m_rxStateMachine.GetMsgBody().Length), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+                    LogUtility.LogUtility.LogFile("destination is not connected and no attempt " + Convert.ToString(m_rxStateMachine.GetMsgBody().Length), ModuleLogLevel);
                     //ShutDownFlag = false;
                     byte []data = GetFirstBuffToTransmitDestination();
                     try
@@ -221,12 +221,12 @@ namespace ProxyLib
                 IPEndPoint DestinationEndPoint;
                 if (!IPAddress.TryParse(Host, out destIp))
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " trying to retrieve IP for " + Host, LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " trying to retrieve IP for " + Host, ModuleLogLevel);
                     DestinationEndPoint = new IPEndPoint(Dns.GetHostEntry(Host).AddressList[0], Port);
                 }
                 else
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " host name is the IP address " + Convert.ToString(destIp), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " host name is the IP address " + Convert.ToString(destIp), ModuleLogLevel);
                     DestinationEndPoint = new IPEndPoint(destIp, Port);
                 }
                 m_destinationSideSocket = new Socket(DestinationEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -236,9 +236,9 @@ namespace ProxyLib
                 {
                     m_destinationSideSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
                 }
-                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Trying to connect destination " + Convert.ToString(DestinationEndPoint), LogUtility.LogLevels.LEVEL_LOG_HIGH2);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Trying to connect destination " + Convert.ToString(DestinationEndPoint), ModuleLogLevel);
                 m_destinationSideSocket.Connect(DestinationEndPoint);
-                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " destination connected ", LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " destination connected ", ModuleLogLevel);
                 m_OnceConnected = true;
                 QueueElement queueElement = new QueueElement();
                 if (m_HttpRequestType.ToUpper().Equals("CONNECT"))

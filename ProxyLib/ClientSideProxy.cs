@@ -82,7 +82,7 @@ namespace ProxyLib
                     {
                         if (m_OnNonProprietaryTransmittedCbk.BytesTransferred != buff.Length)
                         {
-                            LogUtility.LogUtility.LogFile("!!!!NonProprietary: tx " + Convert.ToString(m_OnNonProprietaryTransmittedCbk.BytesTransferred) + " attempted " + Convert.ToString(buff.Length) + " " + System.Enum.GetName(typeof(SocketError), m_OnNonProprietaryTransmittedCbk.SocketError), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+                            LogUtility.LogUtility.LogFile("!!!!NonProprietary: tx " + Convert.ToString(m_OnNonProprietaryTransmittedCbk.BytesTransferred) + " attempted " + Convert.ToString(buff.Length) + " " + System.Enum.GetName(typeof(SocketError), m_OnNonProprietaryTransmittedCbk.SocketError), ModuleLogLevel);
                         }
                         m_NonProprietaryTxCompletedTs = DateTime.Now;
                         m_TransmittedClient += (uint)buff.Length;
@@ -147,7 +147,7 @@ namespace ProxyLib
                 Received = e.BytesTransferred;
                 if (Received <= 0)
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Received (proprietary segment) ERROR " + " " + System.Enum.GetName(typeof(SocketError), e.SocketError), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Received (proprietary segment) ERROR " + " " + System.Enum.GetName(typeof(SocketError), e.SocketError), ModuleLogLevel);
                     CheckConnectionAndShutDownIfGone();
                     Dispose();
                     goto prop_rx;
@@ -195,7 +195,7 @@ namespace ProxyLib
                     int Received = m_OnProprietaryReceivedCbk.BytesTransferred;
                     if (Received <= 0)
                     {
-                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Received (sync) (proprietary segment) ERROR" + " " + System.Enum.GetName(typeof(SocketError), m_OnProprietaryReceivedCbk.SocketError), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+                        LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Received (sync) (proprietary segment) ERROR" + " " + System.Enum.GetName(typeof(SocketError), m_OnProprietaryReceivedCbk.SocketError), ModuleLogLevel);
                         LeaveProprietarySegmentRxCriticalArea();
                         CheckConnectionAndShutDownIfGone();
                         Dispose();
@@ -262,7 +262,7 @@ namespace ProxyLib
                 
                 if (Ret <= 0)
                 {
-                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " error on EndSend " + Convert.ToString(Ret) + " " + System.Enum.GetName(typeof(SocketError), e.SocketError), LogUtility.LogLevels.LEVEL_LOG_HIGH3);
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " error on EndSend " + Convert.ToString(Ret) + " " + System.Enum.GetName(typeof(SocketError), e.SocketError), ModuleLogLevel);
                     goto end_server_tx;
                 }
                 m_ProprietaryTxCompletedTs = DateTime.Now;
@@ -274,7 +274,7 @@ namespace ProxyLib
             {
                 LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
             }
-            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Leaving OnProprietarySegmentTransmitted", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);
+            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " Leaving OnProprietarySegmentTransmitted", ModuleLogLevel);
 end_server_tx:
             LeaveProprietarySegmentTxCriticalArea();
             ReStartAllOperations(false);

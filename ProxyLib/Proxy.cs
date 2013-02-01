@@ -16,7 +16,7 @@ namespace ProxyLib
     //[Synchronization()]
     public abstract class Proxy
     {
-        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_HIGH;
+        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_NONE;
 
 #if false
         protected Queue m_clientTxQueue;

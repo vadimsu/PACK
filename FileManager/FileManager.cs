@@ -76,6 +76,7 @@ namespace FileManager
         public abstract void AddUpdateChunkCtrlFile(long chunkId, byte[] buf, uint offset, uint size);
         public abstract bool ReadChainFile(long chainId, out byte[] buff);
         public abstract byte[] ReadFile(long chunkId);
+        public abstract void Restart();
         
         public static string FileType2Extension(byte fileType)
         {

@@ -11,7 +11,7 @@ namespace ChunkAndChainFileManager
 {
     public class ChunkAndChainFileManager
     {
-        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_MEDIUM;
+        public static LogUtility.LogLevels ModuleLogLevel = LogUtility.LogLevels.LEVEL_LOG_HIGH;
         public static uint ChunkExists = 0;
         public static uint ChunksCreated = 0;
         public static uint DifferentChains = 0;
@@ -188,6 +188,10 @@ namespace ChunkAndChainFileManager
             }
             return false;
         }
+        static public void Restart()
+        {
+            fileManager.Restart();
+        }
         static public bool SaveChain(List<long> chunkList, int chunkListIdx, int LastChunkId, byte[] data, int offset,ChunkAndChainFileManager chunkAndChainFileManager)
         {
             ChunkCB chunkCB;
@@ -289,6 +293,31 @@ namespace ChunkAndChainFileManager
             chunkAndChainFileManager.chainId4Lookup = fileManager.AddUpdateChainFile(buf, chunkAndChainFileManager.chainId4Lookup);
             return presentChunks;
         }
+        public int GetChainAfterChunk(long chunk, List<ChunkListAndChainId> chainsChunksList)
+        {
+            Chain chain;
+
+            if (!GetChain(chainId4Lookup, out chain))
+            {
+                LogUtility.LogUtility.LogFile("Cannot get chain!!!! " + Convert.ToString(chainId4Lookup), ModuleLogLevel);
+                CannotGetChain++;
+                return -1;
+            }
+            //LogUtility.LogUtility.LogFile("chain " + Convert.ToString(ch) + " chunks " + Convert.ToString(chain.chunkIds.Length), ModuleLogLevel);
+            int chunk_idx;
+            if (!FindChunkInChain(chain.chunkIds, chunk, out chunk_idx))
+            {
+                //                    LogUtility.LogUtility.LogFile("Cannot find chunk!!!! " + Convert.ToString(chunkList[chunkListIdx]) + " in chain " + Convert.ToString(ch), ModuleLogLevel);
+                CannotFindChunkInChain++;
+                return -2;
+            }
+            ChunkListAndChainId chunkListAndChainId = new ChunkListAndChainId();
+            chunkListAndChainId.chainId = chainId4Lookup;
+            chunkListAndChainId.chunks = chain.chunkIds;
+            chunkListAndChainId.firstChunkIdx = (uint)chunk_idx + 1;
+            chainsChunksList.Add(chunkListAndChainId);
+            return 0;
+        }
         public int ChainMatch(List<long> chunkList,int chunkListIdx,List<ChunkListAndChainId> chainsChunksList,List<long> sentChainsList)
         {
             Chain chain;
@@ -336,6 +365,7 @@ namespace ChunkAndChainFileManager
                 {
                     case -1: /* different */
                         //Vadim 10/01/13 chainId4Lookup = 0;
+                        chainId4Lookup = 0;//Vadim 28/01/13
                         DifferentChains++;
                         break;
                     case 0:/* match but no longer */

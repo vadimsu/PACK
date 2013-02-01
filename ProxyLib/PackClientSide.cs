@@ -21,7 +21,7 @@ namespace ProxyLib
 
         public static new void InitGlobalObjects()
         {
-            LogUtility.LogUtility.LogFile("PackClientSide:InitGlobalObjects", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+            LogUtility.LogUtility.LogFile("PackClientSide:InitGlobalObjects", ModuleLogLevel);
             ReceiverPackLib.ReceiverPackLib.InitGlobalObjects();
         }
 

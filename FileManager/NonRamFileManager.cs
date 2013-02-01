@@ -20,6 +20,25 @@ namespace FileManager
             }
             return buff;
         }
+        public override void Restart()
+        {
+            try
+            {
+                GlobalsInitiated = false;
+                RefCount--;
+                allChunkDataFiles.Clear();
+                Monitor.Enter(chainFilesMutex);
+                chainfileMap.Clear();
+                Monitor.Exit(chainFilesMutex);
+                Monitor.Enter(chunkCtrlFilesMutex);
+                chunkCBfileMap.Clear();
+                Monitor.Exit(chunkCtrlFilesMutex);
+            }
+            catch (Exception exc)
+            {
+                LogUtility.LogUtility.LogFile("EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+            }
+        }
         protected static void Init(string workingDirectory)
         {
             string[] allFilePaths;

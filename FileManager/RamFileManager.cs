@@ -16,6 +16,10 @@ namespace FileManager
         {
             Init(workingDirectory);
         }
+        public override void Restart()
+        {
+            throw new NotImplementedException();
+        }
         protected static void Init(string workingDirectory)
         {
             if (!GlobalsInitiated)
