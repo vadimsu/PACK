@@ -668,6 +668,7 @@ second_pass:
                         {
                             byte []msg = new byte[DataSize];
                             CopyBytesFromOffset(data,Offset,msg,(int)DataSize);
+                            isSecondPass = true;
                             LogUtility.LogUtility.LogFile("Reprocess " + Convert.ToString(DataSize) + " of data", ModuleLogLevel);
                             if (ProcessDownStreamData(msg, true))
                             {
@@ -676,7 +677,7 @@ second_pass:
                                 goto second_pass;
                             }
                             msg = null;
-                            isSecondPass = true;
+                            //isSecondPass = true;
                         }
                     }
                     LogUtility.LogUtility.LogFile("Queue is not empty", LogUtility.LogLevels.LEVEL_LOG_MEDIUM);

@@ -62,7 +62,7 @@ namespace ReceiverPackLib
         const uint mc_MinChainLengthInBytes = 1024 * 10;
         const uint mc_MinChainLengthInChunks = 10;
         static object m_Chains2SaveMutex = new object();
-#if true
+#if false
         static List<Chains2Save> m_Chains2Save = new List<Chains2Save>();
 #else
         static Dictionary<EndPoint, List<Chains2Save>> m_ChainsPerIpEndpoint = new Dictionary<EndPoint, List<Chains2Save>>();
@@ -91,7 +91,7 @@ namespace ReceiverPackLib
         
         static void OnComplete(EndPoint ipEndPoint)
         {
-#if false
+#if true
             try
             {
                 Queue.Synchronized(m_SaveQueue).Enqueue(ipEndPoint);
@@ -108,7 +108,7 @@ namespace ReceiverPackLib
             Monitor.Enter(m_Chains2SaveMutex);
             try
             {
-#if true
+#if false
                 m_Chains2Save.Add(chain2Save);
 #else 
                 List<Chains2Save> list;
@@ -146,22 +146,38 @@ namespace ReceiverPackLib
         }
         static void WriteChunkChainsThreadProc()
         {
-            int FlushSwTimer = 0;
+            int FlushSwTimer = -1;
+            int time2wait;
             while (true)
             {
                 try
                 {
-#if true
+#if false
                     Monitor.Enter(m_Chains2SaveMutex);
                     Chains2Save[] chains2Save = new Chains2Save[m_Chains2Save.Count];
                     m_Chains2Save.CopyTo(chains2Save);
                     m_Chains2Save.Clear();
                     Monitor.Exit(m_Chains2SaveMutex);
 #else
-                    m_SaveEvent.WaitOne();
+                    if (FlushSwTimer == -1)
+                    {
+                        time2wait = -1;
+                    }
+                    else
+                    {
+                        time2wait = (20 - FlushSwTimer) * 1000;
+                    }
+                    m_SaveEvent.WaitOne(time2wait);
+                    LogUtility.LogUtility.LogFile("Got event", LogUtility.LogLevels.LEVEL_LOG_HIGH);
                     if (Queue.Synchronized(m_SaveQueue).Count == 0)
                     {
-                        goto flush;
+                        LogUtility.LogUtility.LogFile("Queue is empty", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                        FlushSwTimer++;
+                        if (FlushSwTimer == 20)
+                        {
+                            goto flush;
+                        }
+                        continue;
                     }
                     EndPoint ipEndPoint = (EndPoint)Queue.Synchronized(m_SaveQueue).Dequeue();
                     List<Chains2Save> list;
@@ -190,27 +206,26 @@ namespace ReceiverPackLib
                             }
                         }
                     }
+                    FlushSwTimer++;
+                flush:
+                    if (FlushSwTimer == 20)
+                    {
+                        FlushSwTimer = -1;
+                        try
+                        {
+                            LogUtility.LogUtility.LogFile("FLUSHING ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                            Flush();
+                        }
+                        catch (Exception exc)
+                        {
+                            LogUtility.LogUtility.LogFile("EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
+                        }
+                    }
                 }
                 catch(Exception exc)
                 {
                     LogUtility.LogUtility.LogFile("EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
                 }
-            flush:
-                try
-                {
-                    if (++FlushSwTimer >= 300)
-                    {
-                        LogUtility.LogUtility.LogFile("FLUSHING ", LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                        Flush();
-                        FlushSwTimer = 0;
-                        //ChunkAndChainFileManager.ChunkAndChainFileManager.Restart();
-                    }
-                }
-                catch (Exception exc)
-                {
-                    LogUtility.LogUtility.LogFile("EXCEPTION " + exc.Message + " " + exc.StackTrace, LogUtility.LogLevels.LEVEL_LOG_HIGH);
-                }
-                Thread.Sleep(100);
             }
         }
         static System.Threading.Thread PredMsgCacheTimeOutingThread = new Thread(new ThreadStart(WriteChunkChainsThreadProc));
@@ -405,12 +420,38 @@ namespace ReceiverPackLib
             int firstNonMatchingChunk = chunkList.Count;
             int firstNonMatchingChunkOffset = 0;
             chainChunkList = new List<ChunkListAndChainId>(100);
+            List<ChunkListAndChainId> dummyChainChunkList = new List<ChunkListAndChainId>();
+            int rc;
+            bool foundMatch = false;
 
             LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " processing " + Convert.ToString(chunkList.Count) + " chunks, CurrentOffset " + Convert.ToString(m_CurrentOffset), ModuleLogLevel);
-            
+#if true
+            if (chunkList.Count > 0)
+            {
+                rc = m_chunkAndChainFileManager.ChainMatch(chunkList, chunkList.Count-1, chainChunkList, m_SentChainList);
+                if (rc > 0)
+                {
+                    m_SentChainList.Add(chainChunkList[0].chainId);
+                    foundMatch = true;
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " found long chain (fast path) ", ModuleLogLevel);
+                }
+                else if (rc == 0)
+                {
+                    foundMatch = true;
+                    LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " found equal chain (fast path) ", ModuleLogLevel);
+                }
+            }
+            if (foundMatch)
+            {
+                chainOffset = (uint)(m_CurrentOffset + processed_bytes);
+                m_CurrentOffset += (uint)(packet.Length - packet_offset);
+                Monitor.Exit(m_libMutex);
+                return GetChainsListSize(chainChunkList);
+            }
+#endif
             foreach (long chunk in chunkList)
             {
-                int rc = m_chunkAndChainFileManager.ChainMatch(chunkList, idx, chainChunkList, m_SentChainList);
+                rc = m_chunkAndChainFileManager.ChainMatch(chunkList, idx, chainChunkList, m_SentChainList);
                
                 if (rc < 0)
                 {
@@ -445,7 +486,7 @@ namespace ReceiverPackLib
                 }
                 else if (rc == 0)
                 {
-                    //break;
+                    break;
                 }
             }
             if (lastNonMatchingChunk != chunkList.Count)
@@ -525,7 +566,7 @@ namespace ReceiverPackLib
             byte[] predMsg = null;
             if ((chunkMetaDataAndId.Count >= chunksCount)&&(chunksCount > 0))
             {
-                predMsg = TryGeneratePredMsgOnPredAck(chunkMetaDataAndId[(int)chunksCount - 1].chunk, dummy_room_space);
+                //predMsg = TryGeneratePredMsgOnPredAck(chunkMetaDataAndId[(int)chunksCount - 1].chunk, dummy_room_space);
             }
             if ((Flags & PackMsg.PackMsg.LastChunkFlag) == PackMsg.PackMsg.LastChunkFlag)
             {
