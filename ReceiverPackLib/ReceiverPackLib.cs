@@ -4,7 +4,7 @@ using System.Collections;
 using System.Linq;
 using System.Text;
 using System.IO;
-using ChunkAndChainFileManager;
+using ChunkAndChainManager;
 using ChunkChainDataTypes;
 using StreamChunckingLib;
 using System.Net;
@@ -24,15 +24,15 @@ namespace ReceiverPackLib
             int m_LastNonMatchingChunk;
             byte[] m_Packet;
             int m_FirstNonMatchingChunkOffset;
-            ChunkAndChainFileManager.ChunkAndChainFileManager m_ChunkAndChainFileManager;
-            public Chains2Save(List<long> chunkList, int firstNonMatchingChunk, int lastNonMatchingChunk, byte[] packet, int firstNonMatchingChunkOffset, ChunkAndChainFileManager.ChunkAndChainFileManager chunkAndChainFileManager)
+            ChunkAndChainManager.ChunkAndChainManager m_ChunkAndChainManager;
+            public Chains2Save(List<long> chunkList, int firstNonMatchingChunk, int lastNonMatchingChunk, byte[] packet, int firstNonMatchingChunkOffset, ChunkAndChainManager.ChunkAndChainManager chunkAndChainManager)
             {
                 m_ChunList = chunkList;
                 m_FirstNonMatchingChunk = firstNonMatchingChunk;
                 m_LastNonMatchingChunk = lastNonMatchingChunk;
                 m_Packet = packet;
                 m_FirstNonMatchingChunkOffset = firstNonMatchingChunkOffset;
-                m_ChunkAndChainFileManager = chunkAndChainFileManager;
+                m_ChunkAndChainManager = chunkAndChainManager;
             }
             public List<long> GetChunkList()
             {
@@ -54,9 +54,9 @@ namespace ReceiverPackLib
             {
                 return m_FirstNonMatchingChunkOffset;
             }
-            public ChunkAndChainFileManager.ChunkAndChainFileManager GetChunkAndChainFileManager()
+            public ChunkAndChainManager.ChunkAndChainManager GetChunkAndChainManager()
             {
-                return m_ChunkAndChainFileManager;
+                return m_ChunkAndChainManager;
             }
         }
         const uint mc_MinChainLengthInBytes = 1024 * 10;
@@ -87,7 +87,7 @@ namespace ReceiverPackLib
         EndPoint m_Id;
         List<long> m_SentChainList;
         object m_libMutex;
-        ChunkAndChainFileManager.ChunkAndChainFileManager m_chunkAndChainFileManager;
+        ChunkAndChainManager.ChunkAndChainManager m_chunkAndChainManager;
         
         static void OnComplete(EndPoint ipEndPoint)
         {
@@ -201,7 +201,7 @@ namespace ReceiverPackLib
                         {
                             if (PassesSaveCriteria(chain2Save))
                             {
-                                ChunkAndChainFileManager.ChunkAndChainFileManager.SaveChain(chain2Save.GetChunkList(), chain2Save.GetFirstNonMatchingChunk(), chain2Save.GetLastNonMatchingChunk(), chain2Save.GetPacket(), chain2Save.GetFirstNonMatchingChunkOffset(), chain2Save.GetChunkAndChainFileManager());
+                                ChunkAndChainManager.ChunkAndChainManager.SaveChain(chain2Save.GetChunkList(), chain2Save.GetFirstNonMatchingChunk(), chain2Save.GetLastNonMatchingChunk(), chain2Save.GetPacket(), chain2Save.GetFirstNonMatchingChunkOffset(), chain2Save.GetChunkAndChainManager());
                                 LogUtility.LogUtility.LogFile("Saved chain " + Convert.ToString(chain2Save.GetChunkList().Count) + " " + Convert.ToString(chain2Save.GetFirstNonMatchingChunk()) + " " + Convert.ToString(chain2Save.GetLastNonMatchingChunk()) + " " + Convert.ToString(chain2Save.GetFirstNonMatchingChunkOffset()), LogUtility.LogLevels.LEVEL_LOG_HIGH);
                             }
                         }
@@ -233,13 +233,13 @@ namespace ReceiverPackLib
         public static void InitGlobalObjects()
         {
             LogUtility.LogUtility.LogFile("ReceivePackLib:InitGlobalObjects", LogLevels.LEVEL_LOG_HIGH);
-            ChunkAndChainFileManager.ChunkAndChainFileManager.Init();
+            ChunkAndChainManager.ChunkAndChainManager.Init();
             PredMsgCacheTimeOutingThread.Start();
         }
 
         public static void Flush()
         {
-            ChunkAndChainFileManager.ChunkAndChainFileManager.Flush();
+            ChunkAndChainManager.ChunkAndChainManager.Flush();
         }
 
         void InitInstance(OnData onData,OnEnd onEnd,object onEndParam)
@@ -253,7 +253,7 @@ namespace ReceiverPackLib
             m_TotalPredAckSize = 0;
             m_TotalPredSize = 0;
             m_CurrentOffset = 0;
-            m_chunkAndChainFileManager = new ChunkAndChainFileManager.ChunkAndChainFileManager();
+            m_chunkAndChainManager = new ChunkAndChainManager.ChunkAndChainManager();
             m_libMutex = new object();
             m_SentChainList = new List<long>();
         }
@@ -313,7 +313,7 @@ namespace ReceiverPackLib
                 object[] o;
                 LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " writing acked " + Convert.ToString(chMetaData.chunk), ModuleLogLevel);
                 ChunkLength = PackChunking.chunkToLen(chMetaData.chunk);
-                byte[] buff = ChunkAndChainFileManager.ChunkAndChainFileManager.GetChunkData(chMetaData.chunk);
+                byte[] buff = ChunkAndChainManager.ChunkAndChainManager.GetChunkData(chMetaData.chunk);
                 m_onDataReceived(buff, 0, buff.Length);
                 m_CurrentOffset += ChunkLength;
                 m_TotalSaved += (uint)ChunkLength;
@@ -375,7 +375,7 @@ namespace ReceiverPackLib
                 //}
                 for (uint idx = /*chunkListAndChainId.firstChunkIdx*/firstChunk;idx < chunkListAndChainId.chunks.Length; idx++)
                 {
-                    buffer[buffer_idx++] = ChunkAndChainFileManager.ChunkAndChainFileManager.GetChunkHint(chunkListAndChainId.chunks[idx]);
+                    buffer[buffer_idx++] = ChunkAndChainManager.ChunkAndChainManager.GetChunkHint(chunkListAndChainId.chunks[idx]);
                     buffer_idx +=
                     ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Long2ByteArray(buffer, buffer_idx, chunkListAndChainId.chunks[idx]);
                     //LogUtility.LogUtility.LogFile(Convert.ToString(Id) + " chunk " + Convert.ToString(chunkListAndChainId.chunks[idx]) + " len " + Convert.ToString(PackChunking.chunkToLen(chunkListAndChainId.chunks[idx])) + " is written to PRED", ModuleLogLevel);
@@ -428,7 +428,7 @@ namespace ReceiverPackLib
 #if true
             if (chunkList.Count > 0)
             {
-                rc = m_chunkAndChainFileManager.ChainMatch(chunkList, chunkList.Count-1, chainChunkList, m_SentChainList);
+                rc = m_chunkAndChainManager.ChainMatch(chunkList, chunkList.Count-1, chainChunkList, m_SentChainList);
                 if (rc > 0)
                 {
                     m_SentChainList.Add(chainChunkList[0].chainId);
@@ -451,7 +451,7 @@ namespace ReceiverPackLib
 #endif
             foreach (long chunk in chunkList)
             {
-                rc = m_chunkAndChainFileManager.ChainMatch(chunkList, idx, chainChunkList, m_SentChainList);
+                rc = m_chunkAndChainManager.ChainMatch(chunkList, idx, chainChunkList, m_SentChainList);
                
                 if (rc < 0)
                 {
@@ -470,7 +470,7 @@ namespace ReceiverPackLib
                 else if(lastNonMatchingChunk != chunkList.Count)
                 {
 //                    LogUtility.LogUtility.LogFile("end of non-matching range " + Convert.ToString(lastNonMatchingChunk), ModuleLogLevel);
-                    Chains2Save chain2Save = new Chains2Save(chunkList, firstNonMatchingChunk, lastNonMatchingChunk, packet, firstNonMatchingChunkOffset, m_chunkAndChainFileManager);
+                    Chains2Save chain2Save = new Chains2Save(chunkList, firstNonMatchingChunk, lastNonMatchingChunk, packet, firstNonMatchingChunkOffset, m_chunkAndChainManager);
                     AddChain2Save(chain2Save, m_Id);
                     firstNonMatchingChunk = chunkList.Count;
                     lastNonMatchingChunk = chunkList.Count;
@@ -492,7 +492,7 @@ namespace ReceiverPackLib
             if (lastNonMatchingChunk != chunkList.Count)
             {
 //                LogUtility.LogUtility.LogFile("end of non-matching range (last) " + Convert.ToString(lastNonMatchingChunk), ModuleLogLevel);
-                Chains2Save chain2Save = new Chains2Save(chunkList, firstNonMatchingChunk, lastNonMatchingChunk, packet, firstNonMatchingChunkOffset,m_chunkAndChainFileManager);
+                Chains2Save chain2Save = new Chains2Save(chunkList, firstNonMatchingChunk, lastNonMatchingChunk, packet, firstNonMatchingChunkOffset,m_chunkAndChainManager);
                 AddChain2Save(chain2Save, m_Id);
             }
             //Vadim 10/01/13 onDataReceived(packet, packet_offset, packet.Length - packet_offset);
@@ -541,7 +541,7 @@ namespace ReceiverPackLib
         byte[] TryGeneratePredMsgOnPredAck(long chunk, int dummy_room_space)
         {
             List<ChunkListAndChainId> chainsChunksList = new List<ChunkListAndChainId>();
-            if (m_chunkAndChainFileManager.GetChainAfterChunk(chunk, chainsChunksList) != 0)
+            if (m_chunkAndChainManager.GetChainAfterChunk(chunk, chainsChunksList) != 0)
             {
                 chainsChunksList = null;
                 return null;
@@ -581,7 +581,7 @@ namespace ReceiverPackLib
         public void OnDispose()
         {
             OnComplete(m_Id);
-            m_chunkAndChainFileManager.OnDispose();
+            m_chunkAndChainManager.OnDispose();
         }
 
         public byte[] ReceiverOnData(byte[] packet, int room_space)
@@ -613,7 +613,7 @@ namespace ReceiverPackLib
 
         public new string GetDebugInfo()
         {
-            string debugInfo = "ChunksProcessed " + Convert.ToString(m_ChunksProcessed) + " PredMsgSent " + Convert.ToString(m_PredMsgSent) + " PredAckMsgReceived " + Convert.ToString(m_PredAckMsgReceived) + m_chunkAndChainFileManager.GetDebugInfo();
+            string debugInfo = "ChunksProcessed " + Convert.ToString(m_ChunksProcessed) + " PredMsgSent " + Convert.ToString(m_PredMsgSent) + " PredAckMsgReceived " + Convert.ToString(m_PredAckMsgReceived) + m_chunkAndChainManager.GetDebugInfo();
             debugInfo += " Total " + Convert.ToString(m_CurrentOffset) + " TotalSaved " + Convert.ToString(m_TotalSaved) + " " + base.GetDebugInfo();
             return debugInfo;
         }

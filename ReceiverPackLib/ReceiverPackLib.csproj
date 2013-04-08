@@ -48,9 +48,9 @@
       <Project>{F44564F8-6DA9-414C-8F87-9C7B7971BBAA}</Project>
       <Name>ByteArrayScalarTypeConversionLib</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ChunkAndChainFileManager\ChunkAndChainFileManager.csproj">
+    <ProjectReference Include="..\ChunkAndChainManager\ChunkAndChainManager.csproj">
       <Project>{1F6BB7BC-09FE-47B7-AF6C-980EC0E471E5}</Project>
-      <Name>ChunkAndChainFileManager</Name>
+      <Name>ChunkAndChainManager</Name>
     </ProjectReference>
     <ProjectReference Include="..\chunkChainDataTypes\ChunkChainDataTypes.csproj">
       <Project>{4B9BD1CB-8028-4DFF-A905-D10C5FF4511D}</Project>
@@ -67,10 +67,6 @@
     <ProjectReference Include="..\PackMsg\PackMsg.csproj">
       <Project>{61AB1E5E-4099-46CE-AFFB-1E5446DF43F2}</Project>
       <Name>PackMsg</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PerformanceMonitoring\PerformanceMonitoring.csproj">
-      <Project>{4D563147-F26E-4F88-A558-2BF9469EF27D}</Project>
-      <Name>PerformanceMonitoring</Name>
     </ProjectReference>
     <ProjectReference Include="..\Stream2Message\Stream2Message.csproj">
       <Project>{2AD35CB1-FBE7-4A1D-A99E-6A99B9C3DD90}</Project>

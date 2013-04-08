@@ -44,6 +44,10 @@
     <Compile Include="RxTxStateMachine.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ByteArrayScalarTypeConversionLib\ByteArrayScalarTypeConversionLib.csproj">
+      <Project>{F44564F8-6DA9-414C-8F87-9C7B7971BBAA}</Project>
+      <Name>ByteArrayScalarTypeConversionLib</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LogUtility\LogUtility.csproj">
       <Project>{040CE3A3-1086-4566-B087-2C25BFD273CA}</Project>
       <Name>LogUtility</Name>

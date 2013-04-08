@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Linq;
 using System.Text;
+using ByteArrayScalarTypeConversionLib;
 
 namespace RxTxStateMachine
 {
@@ -74,10 +75,14 @@ namespace RxTxStateMachine
         
         public TxStateMachine(EndPoint id) : base(id)
         {
+#if false
             m_Header[0] = (byte)(PackPreamble & 0xFF);
             m_Header[1] = (byte)((PackPreamble >> 8) & 0xFF);
             m_Header[2] = (byte)((PackPreamble >> 16) & 0xFF);
             m_Header[3] = (byte)((PackPreamble >> 24) & 0xFF);
+#else
+            ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Uint2ByteArray(m_Header, 0, PackPreamble);
+#endif
         }
 
         void GoHeaderStateIfDummy()
@@ -90,10 +95,14 @@ namespace RxTxStateMachine
 
         public void SetLength(uint length)
         {
+#if false
             m_Header[4] = (byte)(length & 0xFF);
             m_Header[5] = (byte)((length >> 8) & 0xFF);
             m_Header[6] = (byte)((length >> 16) & 0xFF);
             m_Header[7] = (byte)((length >> 24) & 0xFF);
+#else
+            ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.Uint2ByteArray(m_Header, 4, length);
+#endif
             GoHeaderStateIfDummy();
         }
 
@@ -107,7 +116,7 @@ namespace RxTxStateMachine
         {
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " GetBytes Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " GetBytes Tx sm: state " + Convert.ToString(m_State) + " header " + Convert.ToString(m_Header.Length) + " Body " + Convert.ToString(m_Body.Length), ModuleLogLevel);
                 //LogUtility.LogUtility.LogFile(Environment.StackTrace);
                 switch (m_State)
                 {
@@ -136,7 +145,7 @@ namespace RxTxStateMachine
         {
             try
             {
-                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " GetBytes (limited) Tx sm: state " + Convert.ToString(m_State) + " byte counter " + Convert.ToString(m_ByteCounter), ModuleLogLevel);
+                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " GetBytes(limited) Tx sm: state " + Convert.ToString(m_State) + " header " + Convert.ToString(m_Header.Length) + " Body " + Convert.ToString(m_Body.Length), ModuleLogLevel);
                 //LogUtility.LogUtility.LogFile(Environment.StackTrace);
                 if (m_State == (byte)PackTxRxState_e.PACK_DUMMY_STATE)
                 {
@@ -236,11 +245,17 @@ namespace RxTxStateMachine
 
         uint GetLength()
         {
+#if false
             uint length = m_Header[4];
             length |= (uint)(m_Header[5] << 8);
             length |= (uint)(m_Header[6] << 16);
             length |= (uint)(m_Header[7] << 24);
             return length;
+#else
+            uint length;
+            ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(m_Header, 4, out length);
+            return length;
+#endif
         }
         public void SetCallback(OnMsgReceived onMessageReceived)
         {
@@ -290,10 +305,15 @@ namespace RxTxStateMachine
 
                             if (m_ByteCounter == m_Header.Length)
                             {
+#if false
                                 uint preamble = m_Header[0];
                                 preamble |= (uint)(m_Header[1] << 8);
                                 preamble |= (uint)(m_Header[2] << 16);
                                 preamble |= (uint)(m_Header[3] << 24);
+#else
+                                uint preamble;
+                                ByteArrayScalarTypeConversionLib.ByteArrayScalarTypeConversionLib.ByteArray2Uint(m_Header, 0, out preamble);
+#endif
                                 LogUtility.LogUtility.LogFile("Header received ", ModuleLogLevel);
                                 if (preamble != PackPreamble)
                                 {

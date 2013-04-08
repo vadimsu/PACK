@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using RxTxStateMachine;
 using ProxyLibTypes;
 //using System.Runtime.Remoting.Contexts;
-using PerformanceMonitoring;
 
 namespace ProxyLib
 {

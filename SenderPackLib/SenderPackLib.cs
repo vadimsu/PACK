@@ -166,11 +166,11 @@ namespace SenderPackLib
                     switch (match)
                     {
                         case false:
-                       //     LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " in non-match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
+                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " in non-match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
                             receiverChunkIdx = (int)FindFirstMatchingChunk(predMsg, senderChunk, senderHint);
                             if (receiverChunkIdx != predMsg.Count)
                             {
-                         //       LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " match " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)receiverChunkIdx].chunk)), ModuleLogLevel);
+                                LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + " match " + Convert.ToString(PackChunking.chunkToLen(predMsg[(int)receiverChunkIdx].chunk)), ModuleLogLevel);
                                 match = true;
                                 firstReceiverIdx = (uint)receiverChunkIdx;
                                 firstSenderIdx = (uint)senderChunkIdx;
@@ -185,7 +185,7 @@ namespace SenderPackLib
                             }
                             break;
                         case true:
-                      //      LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "in match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
+                            LogUtility.LogUtility.LogFile(Convert.ToString(m_Id) + "in match " + Convert.ToString(PackChunking.chunkToLen(m_SenderChunkList[senderChunkIdx])), ModuleLogLevel);
                             if ((senderChunk != PackChunking.chunkCode(0, PackChunking.chunkToLen(predMsg[receiverChunkIdx].chunk))) ||
                                 (senderHint != predMsg[receiverChunkIdx].hint))
                             {
